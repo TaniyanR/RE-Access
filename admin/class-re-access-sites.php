@@ -340,6 +340,7 @@ class RE_Access_Sites {
         $site_id = (int)$_POST['site_id'];
         
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
+        $site_status = $site ? $site->status : 'approved';
         
         $wpdb->delete($table, ['id' => $site_id]);
         
@@ -352,7 +353,7 @@ class RE_Access_Sites {
             $site->site_name
         ), $site_id);
         
-        wp_redirect(admin_url('admin.php?page=re-access-sites&message=deleted'));
+        wp_redirect(admin_url('admin.php?page=re-access-sites&status=' . $site_status . '&message=deleted'));
         exit;
     }
     
@@ -370,6 +371,10 @@ class RE_Access_Sites {
         $table = $wpdb->prefix . 're_access_sites';
         $site_id = (int)$_POST['site_id'];
         
+        // Get current status before update
+        $current_site = $wpdb->get_row($wpdb->prepare("SELECT status FROM $table WHERE id = %d", $site_id));
+        $site_status = $current_site ? $current_site->status : 'approved';
+        
         $site_url = self::normalize_url($_POST['site_url']);
         $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
         
@@ -383,7 +388,7 @@ class RE_Access_Sites {
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');
         
-        wp_redirect(admin_url('admin.php?page=re-access-sites&message=updated'));
+        wp_redirect(admin_url('admin.php?page=re-access-sites&status=' . $site_status . '&message=updated'));
         exit;
     }
 }
