@@ -57,6 +57,7 @@ $maybe_require('admin/class-re-access-rss-slots.php');
  * Activation hook: Create tables and save plugin version
  */
 function re_access_activate() {
+    // Create DB tables if the DB helper exists
     if (class_exists('RE_Access_Database')) {
         RE_Access_Database::create_tables();
     }
