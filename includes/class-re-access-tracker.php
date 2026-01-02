@@ -279,9 +279,13 @@ class RE_Access_Tracker {
     
     /**
      * Handle redirect OUT endpoint
+     * Supports both plain URL in 'to' query var and base64url-encoded destination.
+     * Usage examples:
+     *  - /?reaccess_out=1&to=https%3A%2F%2Fexample.com
+     *  - /?reaccess_out=1&to= aBase64UrlEncodedString
      */
     public static function handle_redirect_out() {
-        // Check if this is a redirect request
+        // Only on front-end template redirects
         $reaccess_out = get_query_var('reaccess_out', '');
         $to_url = get_query_var('to', '');
         
@@ -289,11 +293,18 @@ class RE_Access_Tracker {
             return;
         }
         
+        // If 'to' is base64url encoded, try decoding; otherwise treat as raw URL.
+        $decoded = self::base64url_decode($to_url);
+        if ($decoded && wp_parse_url($decoded, PHP_URL_SCHEME)) {
+            $candidate = $decoded;
+        } else {
+            $candidate = $to_url;
+        }
+        
         // Validate and sanitize the redirect URL
-        $safe_url = self::validate_redirect_url($to_url);
+        $safe_url = self::validate_redirect_url($candidate);
         
         if (!$safe_url) {
-            // Invalid URL, show error and exit
             wp_die(
                 esc_html__('Invalid redirect URL', 're-access'),
                 esc_html__('Invalid URL', 're-access'),
@@ -322,16 +333,40 @@ class RE_Access_Tracker {
     }
     
     /**
+     * Decode base64url encoded string
+     * base64url uses - and _ instead of + and / and may omit padding
+     *
+     * @param string $input
+     * @return string|null Decoded string or null on failure
+     */
+    private static function base64url_decode($input) {
+        if (!is_string($input) || $input === '') {
+            return null;
+        }
+        // Replace URL-safe characters with standard base64 characters
+        $base64 = strtr($input, '-_', '+/');
+        
+        // Add padding if needed
+        $remainder = strlen($base64) % 4;
+        if ($remainder) {
+            $base64 .= str_repeat('=', 4 - $remainder);
+        }
+        
+        // Decode
+        $decoded = base64_decode($base64, true);
+        
+        return $decoded !== false ? $decoded : null;
+    }
+    
+    /**
      * Validate redirect URL to prevent open redirect vulnerabilities
-     * 
+     *
      * @param string $url The URL to validate
-     * @return string|false The validated URL or false if invalid
+     * @return string|false The validated/sanitized URL or false if invalid
      */
     private static function validate_redirect_url($url) {
-        // Sanitize the URL
-        $url = sanitize_text_field($url);
-        
-        // Check if URL is empty
+        // Basic sanitize/trim
+        $url = trim(sanitize_text_field($url));
         if (empty($url)) {
             return false;
         }
@@ -340,7 +375,7 @@ class RE_Access_Tracker {
         $parsed = wp_parse_url($url);
         
         // URL must have a scheme (http or https)
-        if (empty($parsed['scheme']) || !in_array($parsed['scheme'], ['http', 'https'], true)) {
+        if (empty($parsed['scheme']) || !in_array(strtolower($parsed['scheme']), ['http', 'https'], true)) {
             return false;
         }
         
@@ -349,26 +384,36 @@ class RE_Access_Tracker {
             return false;
         }
         
-        // Prevent redirects to localhost or internal IPs
-        $host = strtolower($parsed['host']);
+        // Normalize host
+        $host = $parsed['host'];
+        $host_for_validation = trim(strtolower($host), '[]');
         
-        // Block localhost and common localhost aliases
+        // Block localhost and common aliases
         $blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
-        if (in_array($host, $blocked_hosts, true)) {
+        if (in_array($host_for_validation, $blocked_hosts, true)) {
             return false;
         }
         
-        // Block private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
-        if (filter_var($host, FILTER_VALIDATE_IP)) {
-            if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        // If host is an IP address, ensure it's not private/reserved
+        if (filter_var($host_for_validation, FILTER_VALIDATE_IP)) {
+            if (filter_var($host_for_validation, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
                 return false;
             }
         }
         
-        // Use WordPress esc_url_raw for final validation and sanitization
-        $safe_url = esc_url_raw($url);
+        // Block domains that start with common private patterns (helps avoid crafty subdomain bypasses)
+        if (preg_match('/^(10|127|172\\.(?:1[6-9]|2[0-9]|3[01])|192\\.168|localhost)\\./i', $host_for_validation)) {
+            return false;
+        }
         
-        // Verify the sanitized URL is not empty
+        // Prevent redirect back to this site
+        $site_host = wp_parse_url(home_url(), PHP_URL_HOST);
+        if ($site_host && strtolower($site_host) === $host_for_validation) {
+            return false;
+        }
+        
+        // Final sanitization using WordPress
+        $safe_url = esc_url_raw($url);
         if (empty($safe_url)) {
             return false;
         }

@@ -59,11 +59,12 @@ $maybe_require('admin/class-re-access-rss-slots.php');
 function re_access_activate() {
     // Create DB tables if the DB helper exists
     if (class_exists('RE_Access_Database')) {
+        // create_tables should create necessary DB schema
         RE_Access_Database::create_tables();
     }
 
-    // Use the option key expected by the DB/migration code.
-    update_option('reaccess_version', RE_ACCESS_VERSION);
+    // Save plugin version (consistent option key)
+    update_option('re_access_version', RE_ACCESS_VERSION);
 
     // flush_rewrite_rules(); // enable if rewrite rules are added later
 }
@@ -74,7 +75,7 @@ register_activation_hook(__FILE__, 're_access_activate');
  */
 function re_access_init() {
     // Run migrations if needed (class exists)
-    if (class_exists('RE_Access_Database')) {
+    if (class_exists('RE_Access_Database') && method_exists('RE_Access_Database', 'check_migrations')) {
         RE_Access_Database::check_migrations();
     }
 
@@ -84,7 +85,7 @@ function re_access_init() {
     }
 
     // Initialize site management if available
-    if (class_exists('RE_Access_Sites')) {
+    if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'init')) {
         RE_Access_Sites::init();
     }
 
