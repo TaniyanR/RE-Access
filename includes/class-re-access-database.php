@@ -131,4 +131,125 @@ class RE_Access_Database {
             $wpdb->query("DROP TABLE IF EXISTS `{$table}`");
         }
     }
+    
+    /**
+     * Normalize URL for consistent site matching
+     *
+     * Handles:
+     * - Protocol removal (http/https)
+     * - www subdomain removal
+     * - Trailing slash removal
+     * - Query parameter removal
+     * - Default port removal (80, 443)
+     * - URL decoding
+     * - Lowercase conversion
+     *
+     * @param string $url The URL to normalize
+     * @return string The normalized URL
+     */
+    public static function normalize_url($url) {
+        if (empty($url)) {
+            return '';
+        }
+        
+        // Parse URL
+        $parsed = parse_url($url);
+        if ($parsed === false || !isset($parsed['host'])) {
+            return '';
+        }
+        
+        // Get host and path
+        $host = strtolower($parsed['host']);
+        $path = isset($parsed['path']) ? $parsed['path'] : '';
+        
+        // Remove www subdomain
+        if (strpos($host, 'www.') === 0) {
+            $host = substr($host, 4);
+        }
+        
+        // Remove default ports
+        if (isset($parsed['port'])) {
+            if ($parsed['port'] != 80 && $parsed['port'] != 443) {
+                $host .= ':' . $parsed['port'];
+            }
+        }
+        
+        // URL decode and normalize path
+        $path = urldecode($path);
+        $path = strtolower($path);
+        
+        // Remove trailing slash
+        $path = rtrim($path, '/');
+        
+        // Construct normalized URL (without protocol and query)
+        $normalized = $host . $path;
+        
+        return $normalized;
+    }
+    
+    /**
+     * Get URL aliases from WordPress options
+     *
+     * @return array Array of alias mappings [alias => canonical]
+     */
+    public static function get_url_aliases() {
+        $aliases = get_option('re_access_url_aliases', []);
+        
+        if (!is_array($aliases)) {
+            return [];
+        }
+        
+        return $aliases;
+    }
+    
+    /**
+     * Set URL aliases in WordPress options
+     *
+     * @param array $aliases Array of alias mappings [alias => canonical]
+     * @return bool True on success, false on failure
+     */
+    public static function set_url_aliases($aliases) {
+        if (!is_array($aliases)) {
+            return false;
+        }
+        
+        return update_option('re_access_url_aliases', $aliases);
+    }
+    
+    /**
+     * Resolve URL alias to canonical URL
+     *
+     * If the normalized URL matches an alias, returns the canonical URL.
+     * Otherwise, returns the normalized URL as-is.
+     *
+     * @param string $url The URL to resolve
+     * @return string The resolved canonical URL
+     */
+    public static function resolve_url_alias($url) {
+        $normalized = self::normalize_url($url);
+        
+        if (empty($normalized)) {
+            return '';
+        }
+        
+        $aliases = self::get_url_aliases();
+        
+        // Check for exact match first
+        if (isset($aliases[$normalized])) {
+            return $aliases[$normalized];
+        }
+        
+        // Check for domain-level match (with path)
+        // Extract the base domain from normalized URL
+        $parts = explode('/', $normalized, 2);
+        $base_domain = $parts[0];
+        $path = isset($parts[1]) ? '/' . $parts[1] : '';
+        
+        // Check if base domain is an alias
+        if (isset($aliases[$base_domain])) {
+            return $aliases[$base_domain] . $path;
+        }
+        
+        return $normalized;
+    }
 }

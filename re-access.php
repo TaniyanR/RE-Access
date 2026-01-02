@@ -29,7 +29,7 @@ define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 // require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 
 // Load plugin classes
-// require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
+require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-notices.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-dashboard.php';
