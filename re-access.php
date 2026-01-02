@@ -26,7 +26,7 @@ define('RE_ACCESS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Load Composer autoloader
-// require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
+require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 
 // Load plugin classes
 // require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
@@ -144,8 +144,18 @@ function re_access_init_update_checker() {
         return;
     }
     
+    // Get GitHub URL from options (default to hardcoded URL)
+    $github_url = get_option('re_access_github_url', 'https://github.com/TaniyanR/RE-Access');
+    
+    // Validate GitHub URL format
+    if (!filter_var($github_url, FILTER_VALIDATE_URL) || 
+        !preg_match('#^https://github\.com/[\w-]+/[\w-]+$#i', $github_url)) {
+        // Fall back to default if invalid
+        $github_url = 'https://github.com/TaniyanR/RE-Access';
+    }
+    
     $updateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-        'https://github.com/TaniyanR/RE-Access',
+        $github_url,
         __FILE__,
         're-access'
     );
@@ -155,5 +165,10 @@ function re_access_init_update_checker() {
     
     // Enable release assets (for GitHub Releases)
     $updateChecker->getVcsApi()->enableReleaseAssets();
+    
+    // Set authentication if token is defined and valid
+    if (defined('REACCESS_GITHUB_TOKEN') && is_string(REACCESS_GITHUB_TOKEN) && !empty(REACCESS_GITHUB_TOKEN)) {
+        $updateChecker->setAuthentication(REACCESS_GITHUB_TOKEN);
+    }
 }
-// add_action('plugins_loaded', 're_access_init_update_checker');
+add_action('plugins_loaded', 're_access_init_update_checker');
