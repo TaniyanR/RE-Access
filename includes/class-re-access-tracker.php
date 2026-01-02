@@ -24,6 +24,12 @@ class RE_Access_Tracker {
         // AJAX handler for outbound tracking
         add_action('wp_ajax_re_access_track_out', [__CLASS__, 'ajax_track_out']);
         add_action('wp_ajax_nopriv_re_access_track_out', [__CLASS__, 'ajax_track_out']);
+        
+        // Register query vars for redirect endpoint
+        add_filter('query_vars', [__CLASS__, 'register_query_vars']);
+        
+        // Handle redirect endpoint
+        add_action('template_redirect', [__CLASS__, 'handle_redirect_out']);
     }
     
     /**
@@ -260,5 +266,113 @@ class RE_Access_Tracker {
         }
         
         return sanitize_text_field($ip);
+    }
+    
+    /**
+     * Register query vars for redirect endpoint
+     */
+    public static function register_query_vars($vars) {
+        $vars[] = 'reaccess_out';
+        $vars[] = 'to';
+        return $vars;
+    }
+    
+    /**
+     * Handle redirect OUT endpoint
+     */
+    public static function handle_redirect_out() {
+        // Check if this is a redirect request
+        $reaccess_out = get_query_var('reaccess_out', '');
+        $to_url = get_query_var('to', '');
+        
+        if ($reaccess_out !== '1' || empty($to_url)) {
+            return;
+        }
+        
+        // Validate and sanitize the redirect URL
+        $safe_url = self::validate_redirect_url($to_url);
+        
+        if (!$safe_url) {
+            // Invalid URL, show error and exit
+            wp_die(
+                esc_html__('Invalid redirect URL', 're-access'),
+                esc_html__('Invalid URL', 're-access'),
+                ['response' => 400]
+            );
+        }
+        
+        // Track the OUT click
+        global $wpdb;
+        $today = current_time('Y-m-d');
+        $table = $wpdb->prefix . 're_access_tracking';
+        
+        // Increment OUT count
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
+             ON DUPLICATE KEY UPDATE out_count = out_count + 1",
+            $today
+        ));
+        
+        // Track site-specific OUT if it's a registered site
+        self::track_site_out($safe_url, $today);
+        
+        // Perform 302 redirect
+        wp_redirect($safe_url, 302);
+        exit;
+    }
+    
+    /**
+     * Validate redirect URL to prevent open redirect vulnerabilities
+     * 
+     * @param string $url The URL to validate
+     * @return string|false The validated URL or false if invalid
+     */
+    private static function validate_redirect_url($url) {
+        // Sanitize the URL
+        $url = sanitize_text_field($url);
+        
+        // Check if URL is empty
+        if (empty($url)) {
+            return false;
+        }
+        
+        // Parse the URL
+        $parsed = wp_parse_url($url);
+        
+        // URL must have a scheme (http or https)
+        if (empty($parsed['scheme']) || !in_array($parsed['scheme'], ['http', 'https'], true)) {
+            return false;
+        }
+        
+        // URL must have a host
+        if (empty($parsed['host'])) {
+            return false;
+        }
+        
+        // Prevent redirects to localhost or internal IPs
+        $host = strtolower($parsed['host']);
+        
+        // Block localhost and common localhost aliases
+        $blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
+        if (in_array($host, $blocked_hosts, true)) {
+            return false;
+        }
+        
+        // Block private IP ranges (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                return false;
+            }
+        }
+        
+        // Use WordPress esc_url_raw for final validation and sanitization
+        $safe_url = esc_url_raw($url);
+        
+        // Verify the sanitized URL is not empty
+        if (empty($safe_url)) {
+            return false;
+        }
+        
+        return $safe_url;
     }
 }
