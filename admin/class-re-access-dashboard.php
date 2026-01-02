@@ -15,6 +15,15 @@ class RE_Access_Dashboard {
      * Render dashboard page
      */
     public static function render() {
+        // Enqueue Chart.js properly
+        wp_enqueue_script(
+            're-access-chartjs',
+            'https://cdn.jsdelivr.net/npm/chart.js',
+            [],
+            '4.4.0',
+            true
+        );
+        
         // Get period from request
         $period = isset($_GET['period']) ? sanitize_text_field($_GET['period']) : '7';
         $period = in_array($period, ['1', '7', '30']) ? $period : '7';
@@ -100,7 +109,6 @@ class RE_Access_Dashboard {
             </div>
         </div>
         
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script>
         (function() {
             var ctx = document.getElementById('accessChart');

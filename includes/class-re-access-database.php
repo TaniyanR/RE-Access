@@ -114,17 +114,21 @@ class RE_Access_Database {
     public static function drop_tables() {
         global $wpdb;
         
-        $tables = [
-            $wpdb->prefix . 're_access_tracking',
-            $wpdb->prefix . 're_access_sites',
-            $wpdb->prefix . 're_access_site_tracking',
-            $wpdb->prefix . 're_access_settings',
-            $wpdb->prefix . 're_access_notices',
-            $wpdb->prefix . 're_access_visitors',
+        // Define table names - these are safe as they're hardcoded
+        $table_names = [
+            're_access_tracking',
+            're_access_sites',
+            're_access_site_tracking',
+            're_access_settings',
+            're_access_notices',
+            're_access_visitors',
         ];
         
-        foreach ($tables as $table) {
-            $wpdb->query("DROP TABLE IF EXISTS $table");
+        foreach ($table_names as $table_name) {
+            // Use wpdb prefix and proper escaping
+            $table = $wpdb->prefix . $table_name;
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $wpdb->query("DROP TABLE IF EXISTS `{$table}`");
         }
     }
 }

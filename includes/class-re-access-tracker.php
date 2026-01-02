@@ -81,7 +81,7 @@ class RE_Access_Tracker {
             return;
         }
         
-        $referer = $_SERVER['HTTP_REFERER'];
+        $referer = sanitize_text_field(wp_unslash($_SERVER['HTTP_REFERER']));
         $site_url = home_url();
         
         // Skip if referrer is from the same site
@@ -112,8 +112,14 @@ class RE_Access_Tracker {
         $sites_table = $wpdb->prefix . 're_access_sites';
         $tracking_table = $wpdb->prefix . 're_access_site_tracking';
         
-        // Find matching site
-        $sites = $wpdb->get_results("SELECT id, site_url FROM $sites_table WHERE status = 'approved'");
+        // Get cached approved sites (cache for 1 hour)
+        $cache_key = 're_access_approved_sites';
+        $sites = get_transient($cache_key);
+        
+        if (false === $sites) {
+            $sites = $wpdb->get_results("SELECT id, site_url FROM $sites_table WHERE status = 'approved'");
+            set_transient($cache_key, $sites, HOUR_IN_SECONDS);
+        }
         
         foreach ($sites as $site) {
             if (strpos($referer, $site->site_url) === 0) {
@@ -197,8 +203,14 @@ class RE_Access_Tracker {
         $sites_table = $wpdb->prefix . 're_access_sites';
         $tracking_table = $wpdb->prefix . 're_access_site_tracking';
         
-        // Find matching site
-        $sites = $wpdb->get_results("SELECT id, site_url FROM $sites_table WHERE status = 'approved'");
+        // Get cached approved sites (cache for 1 hour)
+        $cache_key = 're_access_approved_sites';
+        $sites = get_transient($cache_key);
+        
+        if (false === $sites) {
+            $sites = $wpdb->get_results("SELECT id, site_url FROM $sites_table WHERE status = 'approved'");
+            set_transient($cache_key, $sites, HOUR_IN_SECONDS);
+        }
         
         foreach ($sites as $site) {
             if (strpos($url, $site->site_url) === 0) {

@@ -248,6 +248,9 @@ class RE_Access_Sites {
         
         $wpdb->update($table, ['status' => 'approved'], ['id' => $site_id]);
         
+        // Clear approved sites cache
+        delete_transient('re_access_approved_sites');
+        
         // Create notice
         RE_Access_Notices::add_notice('site_approved', sprintf(
             __('Site approved: %s', 're-access'),
@@ -275,6 +278,9 @@ class RE_Access_Sites {
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
         
         $wpdb->delete($table, ['id' => $site_id]);
+        
+        // Clear approved sites cache
+        delete_transient('re_access_approved_sites');
         
         // Create notice
         RE_Access_Notices::add_notice('site_deleted', sprintf(
@@ -306,6 +312,9 @@ class RE_Access_Sites {
             'site_rss' => isset($_POST['site_rss']) ? esc_url_raw($_POST['site_rss']) : '',
             'site_desc' => sanitize_textarea_field($_POST['site_desc']),
         ], ['id' => $site_id]);
+        
+        // Clear approved sites cache
+        delete_transient('re_access_approved_sites');
         
         wp_redirect(admin_url('admin.php?page=re-access-sites&message=updated'));
         exit;

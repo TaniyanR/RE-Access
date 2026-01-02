@@ -304,12 +304,20 @@ class RE_Access_RSS_Slots {
                 $image = $enclosure->get_thumbnail();
             }
             
-            // Try to extract image from content
+            // Try to extract image from content using DOMDocument
             if (empty($image)) {
                 $content = $item->get_content();
-                preg_match('/<img[^>]+src=["\']([^"\']+)["\'][^>]*>/i', $content, $matches);
-                if (!empty($matches[1])) {
-                    $image = $matches[1];
+                if (!empty($content)) {
+                    // Use WordPress built-in function to extract first image
+                    libxml_use_internal_errors(true);
+                    $dom = new DOMDocument();
+                    $dom->loadHTML('<?xml encoding="utf-8" ?>' . $content);
+                    libxml_clear_errors();
+                    
+                    $images = $dom->getElementsByTagName('img');
+                    if ($images->length > 0) {
+                        $image = $images->item(0)->getAttribute('src');
+                    }
                 }
             }
             
