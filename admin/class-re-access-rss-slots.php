@@ -2,6 +2,15 @@
 /**
  * RSS slot management
  *
+ * Provides 10 configurable RSS feed slots with:
+ * - Tab-based admin interface
+ * - Configurable item count (1-50)
+ * - HTML/CSS template editors
+ * - Image extraction via DOMDocument
+ * - Variable replacement for item data
+ * - Transient caching (10-1440 minutes)
+ * - Shortcode: [reaccess_rss_slot slot="1" site_id="X"]
+ * 
  * @package ReAccess
  */
 
