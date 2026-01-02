@@ -2,59 +2,86 @@
 /**
  * Plugin Name: RE:Access
  * Plugin URI: https://github.com/TaniyanR/RE-Access
- * Description: A WordPress plugin for access tracking and management.
+ * Description: WordPress plugin for visualizing and reciprocating access circulation through mutual RSS/links
  * Version: 1.0.0
+ * Requires at least: 6.0
+ * Requires PHP: 8.1
  * Author: TaniyanR
+ * Author URI: https://github.com/TaniyanR
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: re-access
- * Requires at least: 6.0
- * Tested up to: 6.4
- * Requires PHP: 8.1
+ * Domain Path: /languages
  */
 
-// Prevent direct access
-if (!defined('ABSPATH')) {
-    exit;
+// If this file is called directly, abort.
+if (!defined('WPINC')) {
+    die;
 }
 
-// Define constants
+// Plugin constants
 define('RE_ACCESS_VERSION', '1.0.0');
+define('RE_ACCESS_PLUGIN_FILE', __FILE__);
 define('RE_ACCESS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Activation hook
-register_activation_hook(__FILE__, 're_access_activate');
+// Load Composer autoloader
+require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 
+/**
+ * Activation hook: Save plugin version
+ */
 function re_access_activate() {
-    // Save version for future migrations
     update_option('re_access_version', RE_ACCESS_VERSION);
 }
+register_activation_hook(__FILE__, 're_access_activate');
 
-// Add admin menu
-add_action('admin_menu', 're_access_add_admin_menu');
-
-function re_access_add_admin_menu() {
+/**
+ * Add admin menu
+ */
+function re_access_admin_menu() {
     add_menu_page(
-        'RE:Access',
-        'RE:Access',
-        'manage_options',
-        're-access',
-        're_access_admin_page',
-        'dashicons-chart-line',
-        80 // Position above Settings (Settings is 81)
+        __('RE:Access', 're-access'),           // Page title
+        __('RE:Access', 're-access'),           // Menu title
+        'manage_options',                       // Capability
+        're-access',                            // Menu slug
+        're_access_dashboard_page',             // Callback function
+        'dashicons-chart-line',                 // Icon
+        79                                      // Position (above Settings which is 80)
     );
 }
+add_action('admin_menu', 're_access_admin_menu');
 
-function re_access_admin_page() {
-    echo '<div class="wrap"><h1>RE:Access</h1><p>Welcome to RE:Access plugin.</p></div>';
+/**
+ * Dashboard page callback
+ */
+function re_access_dashboard_page() {
+    ?>
+    <div class="wrap">
+        <h1><?php echo esc_html__('RE:Access Dashboard', 're-access'); ?></h1>
+        <p><?php echo esc_html__('Welcome to RE:Access version', 're-access') . ' ' . RE_ACCESS_VERSION; ?></p>
+    </div>
+    <?php
 }
 
-// Initialize plugin update checker
-require_once RE_ACCESS_PLUGIN_DIR . 'vendor/yahnis-elsts/plugin-update-checker/plugin-update-checker.php';
-$update_checker = Puc_v4_Factory::buildUpdateChecker(
-    'https://github.com/TaniyanR/RE-Access', // Placeholder GitHub repo URL
-    __FILE__,
-    're-access'
-);
-$update_checker->getVcsApi()->enableReleaseAssets();
+/**
+ * Initialize plugin update checker
+ */
+function re_access_init_update_checker() {
+    if (!is_admin()) {
+        return;
+    }
+    
+    $updateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+        'https://github.com/TaniyanR/RE-Access',
+        __FILE__,
+        're-access'
+    );
+    
+    // Set the branch for updates (defaults to 'main')
+    $updateChecker->setBranch('main');
+    
+    // Enable release assets (for GitHub Releases)
+    $updateChecker->getVcsApi()->enableReleaseAssets();
+}
+add_action('plugins_loaded', 're_access_init_update_checker');
