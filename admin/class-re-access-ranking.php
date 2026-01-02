@@ -274,7 +274,8 @@ class RE_Access_Ranking {
         ], $atts);
         
         $ranking = self::get_ranking_data($atts['period'], $atts['limit']);
+        $output = self::render_ranking_table($ranking, $atts);
         
-        return self::render_ranking_table($ranking, $atts);
+        return apply_filters('re_access_ranking_output', $output, $atts, $ranking);
     }
 }

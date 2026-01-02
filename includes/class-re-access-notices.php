@@ -37,14 +37,26 @@ class RE_Access_Notices {
         global $wpdb;
         $table = $wpdb->prefix . 're_access_notices';
         
-        $wpdb->query($wpdb->prepare(
-            "DELETE FROM $table WHERE id NOT IN (
-                SELECT id FROM (
-                    SELECT id FROM $table ORDER BY created_at DESC LIMIT %d
-                ) AS tmp
-            )",
-            self::$max_notices
+        // Get count of notices
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
+        
+        // Only cleanup if we have more than max_notices
+        if ($count <= self::$max_notices) {
+            return;
+        }
+        
+        // Get the created_at threshold (oldest created_at to keep)
+        $threshold_date = $wpdb->get_var($wpdb->prepare(
+            "SELECT created_at FROM $table ORDER BY created_at DESC LIMIT 1 OFFSET %d",
+            self::$max_notices - 1
         ));
+        
+        if ($threshold_date) {
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM $table WHERE created_at < %s",
+                $threshold_date
+            ));
+        }
     }
     
     /**
@@ -95,7 +107,7 @@ class RE_Access_Notices {
         $output .= '</ul>';
         $output .= '</div>';
         
-        return $output;
+        return apply_filters('re_access_notice_output', $output, $atts, $notices);
     }
     
     /**
@@ -113,6 +125,6 @@ class RE_Access_Notices {
         $output .= '<span class="notice-content">' . esc_html($notice->notice_content) . '</span>';
         $output .= '</div>';
         
-        return $output;
+        return apply_filters('re_access_notice_latest_output', $output, $notice);
     }
 }
