@@ -36,7 +36,7 @@ require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-sites.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-ranking.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-link-slots.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-rss-slots.php';
+require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-rss-slots.php';
 
 /**
  * Activation hook: Create tables and save plugin version
@@ -69,6 +69,14 @@ function re_access_init() {
     // add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
 }
 add_action('init', 're_access_init');
+
+/**
+ * Initialize shortcodes (RSS slots only)
+ */
+function re_access_init_rss() {
+    add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
+}
+add_action('init', 're_access_init_rss');
 
 /**
  * Add admin menu
@@ -116,14 +124,14 @@ function re_access_admin_menu() {
     // );
     
     // RSS Slots submenu
-    // add_submenu_page(
-    //     're-access',
-    //     __('RSS Slots', 're-access'),
-    //     __('RSS Slots', 're-access'),
-    //     'manage_options',
-    //     're-access-rss-slots',
-    //     ['RE_Access_RSS_Slots', 'render']
-    // );
+    add_submenu_page(
+        're-access',
+        __('RSS Slots', 're-access'),
+        __('RSS Slots', 're-access'),
+        'manage_options',
+        're-access-rss-slots',
+        ['RE_Access_RSS_Slots', 'render']
+    );
 }
 add_action('admin_menu', 're_access_admin_menu');
 
