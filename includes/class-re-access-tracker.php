@@ -44,7 +44,7 @@ class RE_Access_Tracker {
         $today = current_time('Y-m-d');
         
         // Track PV
-        $table = $wpdb->prefix . 're_access_tracking';
+        $table = $wpdb->prefix . 'reaccess_daily';
         $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (date, pv_count) VALUES (%s, 1) 
              ON DUPLICATE KEY UPDATE pv_count = pv_count + 1",
@@ -53,26 +53,19 @@ class RE_Access_Tracker {
         
         // Track UU
         $visitor_hash = self::get_visitor_hash();
-        $visitor_table = $wpdb->prefix . 're_access_visitors';
+        $cache_key = 'reaccess_visitor_' . $visitor_hash . '_' . $today;
         
-        $existing = $wpdb->get_var($wpdb->prepare(
-            "SELECT id FROM $visitor_table WHERE visitor_hash = %s AND date = %s",
-            $visitor_hash,
-            $today
-        ));
-        
-        if (!$existing) {
-            $wpdb->insert($visitor_table, [
-                'visitor_hash' => $visitor_hash,
-                'date' => $today
-            ]);
-            
+        // Check if visitor already counted today (using transient cache)
+        if (!get_transient($cache_key)) {
             // Increment UU count
             $wpdb->query($wpdb->prepare(
                 "INSERT INTO $table (date, uu_count) VALUES (%s, 1) 
                  ON DUPLICATE KEY UPDATE uu_count = uu_count + 1",
                 $today
             ));
+            
+            // Cache for rest of the day
+            set_transient($cache_key, true, DAY_IN_SECONDS);
         }
         
         // Track IN (referrer)
@@ -97,7 +90,7 @@ class RE_Access_Tracker {
         
         global $wpdb;
         $today = current_time('Y-m-d');
-        $table = $wpdb->prefix . 're_access_tracking';
+        $table = $wpdb->prefix . 'reaccess_daily';
         
         // Increment IN count
         $wpdb->query($wpdb->prepare(
@@ -115,8 +108,8 @@ class RE_Access_Tracker {
      */
     private static function track_site_referrer($referer, $date) {
         global $wpdb;
-        $sites_table = $wpdb->prefix . 're_access_sites';
-        $tracking_table = $wpdb->prefix . 're_access_site_tracking';
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
+        $tracking_table = $wpdb->prefix . 'reaccess_site_daily';
         
         // Get cached approved sites (cache for 1 hour)
         $cache_key = 're_access_approved_sites';
@@ -186,7 +179,7 @@ class RE_Access_Tracker {
         
         global $wpdb;
         $today = current_time('Y-m-d');
-        $table = $wpdb->prefix . 're_access_tracking';
+        $table = $wpdb->prefix . 'reaccess_daily';
         
         // Increment OUT count
         $wpdb->query($wpdb->prepare(
@@ -206,8 +199,8 @@ class RE_Access_Tracker {
      */
     private static function track_site_out($url, $date) {
         global $wpdb;
-        $sites_table = $wpdb->prefix . 're_access_sites';
-        $tracking_table = $wpdb->prefix . 're_access_site_tracking';
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
+        $tracking_table = $wpdb->prefix . 'reaccess_site_daily';
         
         // Get cached approved sites (cache for 1 hour)
         $cache_key = 're_access_approved_sites';
@@ -315,7 +308,7 @@ class RE_Access_Tracker {
         // Track the OUT click
         global $wpdb;
         $today = current_time('Y-m-d');
-        $table = $wpdb->prefix . 're_access_tracking';
+        $table = $wpdb->prefix . 'reaccess_daily';
         
         // Increment OUT count
         $wpdb->query($wpdb->prepare(
