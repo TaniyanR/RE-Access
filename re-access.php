@@ -25,26 +25,47 @@ define('RE_ACCESS_PLUGIN_FILE', __FILE__);
 define('RE_ACCESS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Load Composer autoloader
-// require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
+// Load Composer autoloader (safe check)
+$composer_autoload = RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
+if (file_exists($composer_autoload)) {
+    require_once $composer_autoload;
+}
 
-// Load plugin classes
-require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
-require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-notices.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-dashboard.php';
-require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-sites.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-ranking.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-link-slots.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-rss-slots.php';
+/*
+ * Load plugin classes only when files exist to avoid fatal errors
+ * This keeps the bootstrap resilient while features are incrementally added.
+ */
+$maybe_require = function (string $path) {
+    $full = RE_ACCESS_PLUGIN_DIR . $path;
+    if (file_exists($full)) {
+        require_once $full;
+        return true;
+    }
+    return false;
+};
+
+$maybe_require('includes/class-re-access-database.php');
+$maybe_require('includes/class-re-access-tracker.php');
+$maybe_require('includes/class-re-access-notices.php');
+$maybe_require('admin/class-re-access-dashboard.php');
+$maybe_require('admin/class-re-access-sites.php');
+$maybe_require('admin/class-re-access-ranking.php');
+$maybe_require('admin/class-re-access-link-slots.php');
+$maybe_require('admin/class-re-access-rss-slots.php');
 
 /**
  * Activation hook: Create tables and save plugin version
  */
 function re_access_activate() {
-    RE_Access_Database::create_tables();
-    update_option('re_access_version', RE_ACCESS_VERSION);
-    // flush_rewrite_rules();
+    // Create DB tables if the DB helper exists
+    if (class_exists('RE_Access_Database')) {
+        RE_Access_Database::create_tables();
+    }
+
+    // Use the option key expected by the database/migration code.
+    update_option('reaccess_version', RE_ACCESS_VERSION);
+
+    // flush_rewrite_rules(); // enable if rewrite rules are added later
 }
 register_activation_hook(__FILE__, 're_access_activate');
 
@@ -52,80 +73,110 @@ register_activation_hook(__FILE__, 're_access_activate');
  * Initialize plugin
  */
 function re_access_init() {
-    // Initialize tracking
-    // RE_Access_Tracker::init();
-    
-    // Initialize site management
-    RE_Access_Sites::init();
-    
-    // Register shortcodes
-    // add_shortcode('reaccess_notice', ['RE_Access_Notices', 'shortcode_notice']);
-    // add_shortcode('reaccess_notice_latest', ['RE_Access_Notices', 'shortcode_notice_latest']);
-    // add_shortcode('reaccess_ranking', ['RE_Access_Ranking', 'shortcode_ranking']);
-    // add_shortcode('reaccess_link_slot', ['RE_Access_Link_Slots', 'shortcode_link_slot']);
-    // add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
+    // Run migrations if needed (class exists)
+    if (class_exists('RE_Access_Database')) {
+        RE_Access_Database::check_migrations();
+    }
+
+    // Initialize tracking if available
+    if (class_exists('RE_Access_Tracker')) {
+        RE_Access_Tracker::init();
+    }
+
+    // Initialize site management if available
+    if (class_exists('RE_Access_Sites')) {
+        RE_Access_Sites::init();
+    }
+
+    // Register shortcodes only when their handler classes exist
+    if (class_exists('RE_Access_Notices')) {
+        add_shortcode('reaccess_notice', ['RE_Access_Notices', 'shortcode_notice']);
+        add_shortcode('reaccess_notice_latest', ['RE_Access_Notices', 'shortcode_notice_latest']);
+    }
+
+    if (class_exists('RE_Access_Ranking')) {
+        add_shortcode('reaccess_ranking', ['RE_Access_Ranking', 'shortcode_ranking']);
+    }
+
+    if (class_exists('RE_Access_Link_Slots')) {
+        add_shortcode('reaccess_link_slot', ['RE_Access_Link_Slots', 'shortcode_link_slot']);
+    }
+
+    if (class_exists('RE_Access_RSS_Slots')) {
+        add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
+    }
 }
 add_action('init', 're_access_init');
 
 /**
- * Add admin menu
+ * Add admin menu (only register pages for classes that exist)
  */
 function re_access_admin_menu() {
-    // Main dashboard
+    // Main dashboard (fallback to simple callback if class missing)
+    if (class_exists('RE_Access_Dashboard') && method_exists('RE_Access_Dashboard', 'render')) {
+        $callback = ['RE_Access_Dashboard', 'render'];
+    } else {
+        $callback = 're_access_dashboard_page';
+    }
+
     add_menu_page(
         __('RE:Access', 're-access'),
         __('RE:Access', 're-access'),
         'manage_options',
         're-access',
-        're_access_dashboard_page',
+        $callback,
         'dashicons-chart-line',
         79
     );
-    
-    // Sites submenu
-    add_submenu_page(
-        're-access',
-        __('Site Registration', 're-access'),
-        __('Sites', 're-access'),
-        'manage_options',
-        're-access-sites',
-        ['RE_Access_Sites', 'render']
-    );
-    
-    // Ranking submenu
-    // add_submenu_page(
-    //     're-access',
-    //     __('Reverse Access Ranking', 're-access'),
-    //     __('Ranking', 're-access'),
-    //     'manage_options',
-    //     're-access-ranking',
-    //     ['RE_Access_Ranking', 'render']
-    // );
-    
-    // Link Slots submenu
-    // add_submenu_page(
-    //     're-access',
-    //     __('Link Slots', 're-access'),
-    //     __('Link Slots', 're-access'),
-    //     'manage_options',
-    //     're-access-link-slots',
-    //     ['RE_Access_Link_Slots', 'render']
-    // );
-    
-    // RSS Slots submenu
-    // add_submenu_page(
-    //     're-access',
-    //     __('RSS Slots', 're-access'),
-    //     __('RSS Slots', 're-access'),
-    //     'manage_options',
-    //     're-access-rss-slots',
-    //     ['RE_Access_RSS_Slots', 'render']
-    // );
+
+    if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('Site Registration', 're-access'),
+            __('Sites', 're-access'),
+            'manage_options',
+            're-access-sites',
+            ['RE_Access_Sites', 'render']
+        );
+    }
+
+    if (class_exists('RE_Access_Ranking') && method_exists('RE_Access_Ranking', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('Reverse Access Ranking', 're-access'),
+            __('Ranking', 're-access'),
+            'manage_options',
+            're-access-ranking',
+            ['RE_Access_Ranking', 'render']
+        );
+    }
+
+    if (class_exists('RE_Access_Link_Slots') && method_exists('RE_Access_Link_Slots', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('Link Slots', 're-access'),
+            __('Link Slots', 're-access'),
+            'manage_options',
+            're-access-link-slots',
+            ['RE_Access_Link_Slots', 'render']
+        );
+    }
+
+    if (class_exists('RE_Access_RSS_Slots') && method_exists('RE_Access_RSS_Slots', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('RSS Slots', 're-access'),
+            __('RSS Slots', 're-access'),
+            'manage_options',
+            're-access-rss-slots',
+            ['RE_Access_RSS_Slots', 'render']
+        );
+    }
 }
 add_action('admin_menu', 're_access_admin_menu');
 
 /**
- * Dashboard page callback
+ * Dashboard page callback (fallback)
  */
 function re_access_dashboard_page() {
     ?>
@@ -143,17 +194,34 @@ function re_access_init_update_checker() {
     if (!is_admin()) {
         return;
     }
-    
-    $updateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-        'https://github.com/TaniyanR/RE-Access',
-        __FILE__,
-        're-access'
-    );
-    
-    // Set the branch for updates (defaults to 'main')
-    $updateChecker->setBranch('main');
-    
-    // Enable release assets (for GitHub Releases)
-    $updateChecker->getVcsApi()->enableReleaseAssets();
+
+    // Get GitHub URL from options (default to hardcoded URL)
+    $github_url = get_option('re_access_github_url', 'https://github.com/TaniyanR/RE-Access');
+
+    // Validate GitHub URL format
+    if (!filter_var($github_url, FILTER_VALIDATE_URL) ||
+        !preg_match('#^https://github\.com/[\w-]+/[\w-]+$#i', $github_url)) {
+        // Fall back to default if invalid
+        $github_url = 'https://github.com/TaniyanR/RE-Access';
+    }
+
+    if (class_exists('\YahnisElsts\PluginUpdateChecker\v5\PucFactory')) {
+        $updateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+            $github_url,
+            __FILE__,
+            're-access'
+        );
+
+        // Set the branch for updates (defaults to 'main')
+        $updateChecker->setBranch('main');
+
+        // Enable release assets (for GitHub Releases)
+        $updateChecker->getVcsApi()->enableReleaseAssets();
+
+        // Set authentication if token is defined and valid
+        if (defined('REACCESS_GITHUB_TOKEN') && is_string(REACCESS_GITHUB_TOKEN) && !empty(REACCESS_GITHUB_TOKEN)) {
+            $updateChecker->setAuthentication(REACCESS_GITHUB_TOKEN);
+        }
+    }
 }
-// add_action('plugins_loaded', 're_access_init_update_checker');
+add_action('plugins_loaded', 're_access_init_update_checker');
