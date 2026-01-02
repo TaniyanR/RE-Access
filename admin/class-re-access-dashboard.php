@@ -172,7 +172,7 @@ class RE_Access_Dashboard {
      */
     private static function get_access_data($days) {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_tracking';
+        $table = $wpdb->prefix . 'reaccess_daily';
         
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT date, in_count, out_count, pv_count, uu_count 
@@ -190,7 +190,7 @@ class RE_Access_Dashboard {
      */
     private static function get_kpis($days) {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_tracking';
+        $table = $wpdb->prefix . 'reaccess_daily';
         
         $result = $wpdb->get_row($wpdb->prepare(
             "SELECT 

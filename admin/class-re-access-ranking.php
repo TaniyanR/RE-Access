@@ -129,8 +129,8 @@ class RE_Access_Ranking {
      */
     public static function get_ranking_data($period, $limit) {
         global $wpdb;
-        $sites_table = $wpdb->prefix . 're_access_sites';
-        $tracking_table = $wpdb->prefix . 're_access_site_tracking';
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
+        $tracking_table = $wpdb->prefix . 'reaccess_site_daily';
         
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT 
