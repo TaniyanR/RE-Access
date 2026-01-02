@@ -24,6 +24,9 @@ class RE_Access_Tracker {
         // AJAX handler for outbound tracking
         add_action('wp_ajax_re_access_track_out', [__CLASS__, 'ajax_track_out']);
         add_action('wp_ajax_nopriv_re_access_track_out', [__CLASS__, 'ajax_track_out']);
+        
+        // Handle redirect endpoint for OUT tracking
+        add_action('init', [__CLASS__, 'handle_redirect_endpoint']);
     }
     
     /**
@@ -256,5 +259,127 @@ class RE_Access_Tracker {
         }
         
         return sanitize_text_field($ip);
+    }
+    
+    /**
+     * Handle redirect endpoint for OUT tracking
+     * Endpoint: ?reaccess_out=1&to=<base64url encoded URL>
+     */
+    public static function handle_redirect_endpoint() {
+        // Check if this is a redirect request
+        if (empty($_GET['reaccess_out']) || $_GET['reaccess_out'] !== '1') {
+            return;
+        }
+        
+        if (empty($_GET['to'])) {
+            wp_die(esc_html__('Invalid redirect request: missing destination URL', 're-access'));
+        }
+        
+        // Decode base64url encoded URL
+        $encoded_url = sanitize_text_field($_GET['to']);
+        $decoded_url = self::base64url_decode($encoded_url);
+        
+        if (!$decoded_url) {
+            wp_die(esc_html__('Invalid redirect request: malformed URL encoding', 're-access'));
+        }
+        
+        // Validate URL to prevent open redirect vulnerabilities
+        $validated_url = self::validate_redirect_url($decoded_url);
+        
+        if (!$validated_url) {
+            wp_die(esc_html__('Invalid redirect request: unsafe URL', 're-access'));
+        }
+        
+        // Track OUT count before redirecting
+        self::track_redirect_out($validated_url);
+        
+        // Perform 302 redirect
+        wp_redirect($validated_url, 302);
+        exit;
+    }
+    
+    /**
+     * Decode base64url encoded string
+     * base64url uses - and _ instead of + and / and omits padding
+     */
+    private static function base64url_decode($input) {
+        // Replace URL-safe characters with standard base64 characters
+        $base64 = strtr($input, '-_', '+/');
+        
+        // Add padding if needed
+        $remainder = strlen($base64) % 4;
+        if ($remainder) {
+            $base64 .= str_repeat('=', 4 - $remainder);
+        }
+        
+        // Decode
+        $decoded = base64_decode($base64, true);
+        
+        return $decoded !== false ? $decoded : null;
+    }
+    
+    /**
+     * Validate redirect URL to prevent open redirect vulnerabilities
+     * Only allow HTTP/HTTPS URLs and ensure they're not pointing back to this site
+     */
+    private static function validate_redirect_url($url) {
+        // Sanitize URL
+        $url = esc_url_raw($url);
+        
+        if (empty($url)) {
+            return false;
+        }
+        
+        // Parse URL
+        $parsed = wp_parse_url($url);
+        
+        if (!$parsed || empty($parsed['scheme']) || empty($parsed['host'])) {
+            return false;
+        }
+        
+        // Only allow HTTP and HTTPS schemes
+        if (!in_array($parsed['scheme'], ['http', 'https'], true)) {
+            return false;
+        }
+        
+        // Prevent redirects to localhost, private IPs, or same site
+        $host = $parsed['host'];
+        
+        // Block localhost and local addresses
+        if (in_array($host, ['localhost', '127.0.0.1', '0.0.0.0', '::1'], true)) {
+            return false;
+        }
+        
+        // Block private IP ranges (basic check)
+        if (preg_match('/^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/', $host)) {
+            return false;
+        }
+        
+        // Prevent redirect back to same site
+        $site_host = wp_parse_url(home_url(), PHP_URL_HOST);
+        if ($host === $site_host) {
+            return false;
+        }
+        
+        return $url;
+    }
+    
+    /**
+     * Track OUT count when redirecting
+     */
+    private static function track_redirect_out($url) {
+        global $wpdb;
+        $today = current_time('Y-m-d');
+        $table = $wpdb->prefix . 're_access_tracking';
+        
+        // Increment OUT count
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
+             ON DUPLICATE KEY UPDATE out_count = out_count + 1",
+            $today
+        ));
+        
+        // Track site-specific OUT if it's a registered site
+        self::track_site_out($url, $today);
     }
 }

@@ -29,8 +29,8 @@ define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 // require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 
 // Load plugin classes
-// require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
+require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
+require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-notices.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-dashboard.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-sites.php';
@@ -53,7 +53,7 @@ register_activation_hook(__FILE__, 're_access_activate');
  */
 function re_access_init() {
     // Initialize tracking
-    // RE_Access_Tracker::init();
+    RE_Access_Tracker::init();
     
     // Initialize site management
     // RE_Access_Sites::init();
@@ -65,7 +65,7 @@ function re_access_init() {
     // add_shortcode('reaccess_link_slot', ['RE_Access_Link_Slots', 'shortcode_link_slot']);
     // add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
 }
-// add_action('init', 're_access_init');
+add_action('init', 're_access_init');
 
 /**
  * Add admin menu
