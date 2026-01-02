@@ -25,8 +25,11 @@ class RE_Access_Tracker {
         add_action('wp_ajax_re_access_track_out', [__CLASS__, 'ajax_track_out']);
         add_action('wp_ajax_nopriv_re_access_track_out', [__CLASS__, 'ajax_track_out']);
         
-        // Handle redirect endpoint for OUT tracking
-        add_action('template_redirect', [__CLASS__, 'handle_redirect_endpoint']);
+        // Register query vars for redirect endpoint
+        add_filter('query_vars', [__CLASS__, 'register_query_vars']);
+        
+        // Handle redirect endpoint
+        add_action('template_redirect', [__CLASS__, 'handle_redirect_out']);
     }
     
     /**
@@ -230,12 +233,16 @@ class RE_Access_Tracker {
     }
     
     /**
-     * Get visitor hash (based on IP and user agent)
+     * Get visitor hash for unique user tracking
+     * Uses MD5 (per specification) of IP, user agent, and date with delimiters
+     * Note: MD5 is sufficient for non-cryptographic visitor identification
      */
     private static function get_visitor_hash() {
         $ip = self::get_client_ip();
         $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
-        return hash('sha256', $ip . $user_agent);
+        $date = current_time('Y-m-d');
+        // MD5 is used per specification for visitor tracking (non-cryptographic purpose)
+        return md5($ip . '|' . $user_agent . '|' . $date);
     }
     
     /**
@@ -262,48 +269,80 @@ class RE_Access_Tracker {
     }
     
     /**
-     * Handle redirect endpoint for OUT tracking
-     * Endpoint: ?reaccess_out=1&to=<base64url encoded URL>
+     * Register query vars for redirect endpoint
      */
-    public static function handle_redirect_endpoint() {
-        // Check if this is a redirect request
-        $reaccess_out = isset($_GET['reaccess_out']) ? sanitize_text_field(wp_unslash($_GET['reaccess_out'])) : '';
-        if ($reaccess_out !== '1') {
+    public static function register_query_vars($vars) {
+        $vars[] = 'reaccess_out';
+        $vars[] = 'to';
+        return $vars;
+    }
+    
+    /**
+     * Handle redirect OUT endpoint
+     * Supports both plain URL in 'to' query var and base64url-encoded destination.
+     * Usage examples:
+     *  - /?reaccess_out=1&to=https%3A%2F%2Fexample.com
+     *  - /?reaccess_out=1&to= aBase64UrlEncodedString
+     */
+    public static function handle_redirect_out() {
+        // Only on front-end template redirects
+        $reaccess_out = get_query_var('reaccess_out', '');
+        $to_url = get_query_var('to', '');
+        
+        if ($reaccess_out !== '1' || empty($to_url)) {
             return;
         }
         
-        if (empty($_GET['to'])) {
-            wp_die(esc_html__('Invalid redirect request: missing destination URL', 're-access'));
+        // If 'to' is base64url encoded, try decoding; otherwise treat as raw URL.
+        $decoded = self::base64url_decode($to_url);
+        if ($decoded && wp_parse_url($decoded, PHP_URL_SCHEME)) {
+            $candidate = $decoded;
+        } else {
+            $candidate = $to_url;
         }
         
-        // Decode base64url encoded URL
-        $encoded_url = sanitize_text_field(wp_unslash($_GET['to']));
-        $decoded_url = self::base64url_decode($encoded_url);
+        // Validate and sanitize the redirect URL
+        $safe_url = self::validate_redirect_url($candidate);
         
-        if (!$decoded_url) {
-            wp_die(esc_html__('Invalid redirect request: malformed URL encoding', 're-access'));
+        if (!$safe_url) {
+            wp_die(
+                esc_html__('Invalid redirect URL', 're-access'),
+                esc_html__('Invalid URL', 're-access'),
+                ['response' => 400]
+            );
         }
         
-        // Validate URL to prevent open redirect vulnerabilities
-        $validated_url = self::validate_redirect_url($decoded_url);
+        // Track the OUT click
+        global $wpdb;
+        $today = current_time('Y-m-d');
+        $table = $wpdb->prefix . 're_access_tracking';
         
-        if (!$validated_url) {
-            wp_die(esc_html__('Invalid redirect request: unsafe URL', 're-access'));
-        }
+        // Increment OUT count
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
+             ON DUPLICATE KEY UPDATE out_count = out_count + 1",
+            $today
+        ));
         
-        // Track OUT count before redirecting
-        self::track_redirect_out($validated_url);
+        // Track site-specific OUT if it's a registered site
+        self::track_site_out($safe_url, $today);
         
         // Perform 302 redirect
-        wp_redirect($validated_url, 302);
+        wp_redirect($safe_url, 302);
         exit;
     }
     
     /**
      * Decode base64url encoded string
-     * base64url uses - and _ instead of + and / and omits padding
+     * base64url uses - and _ instead of + and / and may omit padding
+     *
+     * @param string $input
+     * @return string|null Decoded string or null on failure
      */
     private static function base64url_decode($input) {
+        if (!is_string($input) || $input === '') {
+            return null;
+        }
         // Replace URL-safe characters with standard base64 characters
         $base64 = strtr($input, '-_', '+/');
         
@@ -321,83 +360,64 @@ class RE_Access_Tracker {
     
     /**
      * Validate redirect URL to prevent open redirect vulnerabilities
-     * Only allow HTTP/HTTPS URLs and ensure they're not pointing back to this site
+     *
+     * @param string $url The URL to validate
+     * @return string|false The validated/sanitized URL or false if invalid
      */
     private static function validate_redirect_url($url) {
+        // Basic sanitize/trim
+        $url = trim(sanitize_text_field($url));
         if (empty($url)) {
             return false;
         }
         
-        // Parse URL before sanitization to validate original structure
+        // Parse the URL
         $parsed = wp_parse_url($url);
         
-        if (!$parsed || empty($parsed['scheme']) || empty($parsed['host'])) {
+        // URL must have a scheme (http or https)
+        if (empty($parsed['scheme']) || !in_array(strtolower($parsed['scheme']), ['http', 'https'], true)) {
             return false;
         }
         
-        // Only allow HTTP and HTTPS schemes
-        if (!in_array($parsed['scheme'], ['http', 'https'], true)) {
+        // URL must have a host
+        if (empty($parsed['host'])) {
             return false;
         }
         
+        // Normalize host
         $host = $parsed['host'];
+        $host_for_validation = trim(strtolower($host), '[]');
         
-        // Remove brackets from IPv6 addresses for validation
-        $host_for_validation = trim($host, '[]');
-        
-        // Block common loopback patterns
-        if (preg_match('/^(::1|::ffff:127\\.0\\.0\\.1)$/i', $host_for_validation)) {
+        // Block localhost and common aliases
+        $blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
+        if (in_array($host_for_validation, $blocked_hosts, true)) {
             return false;
         }
         
-        // Check if host is an IP address and validate it's not private/local
+        // If host is an IP address, ensure it's not private/reserved
         if (filter_var($host_for_validation, FILTER_VALIDATE_IP)) {
-            // Block private, reserved, and loopback IPs
-            if (!filter_var($host_for_validation, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            if (filter_var($host_for_validation, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
                 return false;
             }
         }
         
-        // Block localhost by name
-        if (in_array(strtolower($host), ['localhost', 'localhost.localdomain'], true)) {
+        // Block domains that start with common private patterns (helps avoid crafty subdomain bypasses)
+        if (preg_match('/^(10|127|172\\.(?:1[6-9]|2[0-9]|3[01])|192\\.168|localhost)\\./i', $host_for_validation)) {
             return false;
         }
         
-        // Prevent redirect back to same site
+        // Prevent redirect back to this site
         $site_host = wp_parse_url(home_url(), PHP_URL_HOST);
-        if ($host === $site_host) {
+        if ($site_host && strtolower($site_host) === $host_for_validation) {
             return false;
         }
         
-        // Additional security: Block hosts that start with common private patterns
-        // This catches cases like '10.example.com', '172.16-31.example.com', or '192.168.example.com'
-        // The filter_var above handles actual IPs, this handles domain-based bypasses
-        if (preg_match('/^(10|127|172\\.(?:1[6-9]|2[0-9]|3[01])|192\\.168|localhost)\./i', $host)) {
+        // Final sanitization using WordPress
+        $safe_url = esc_url_raw($url);
+        if (empty($safe_url)) {
             return false;
         }
         
-        // Sanitize URL after validation
-        $url = esc_url_raw($url);
-        
-        return empty($url) ? false : $url;
-    }
-    
-    /**
-     * Track OUT count when redirecting
-     */
-    private static function track_redirect_out($url) {
-        global $wpdb;
-        $today = current_time('Y-m-d');
-        $table = $wpdb->prefix . 're_access_tracking';
-        
-        // Increment OUT count
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
-             ON DUPLICATE KEY UPDATE out_count = out_count + 1",
-            $today
-        ));
-        
-        // Track site-specific OUT if it's a registered site
-        self::track_site_out($url, $today);
+        return $safe_url;
     }
 }
