@@ -42,7 +42,7 @@ require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
  * Activation hook: Create tables and save plugin version
  */
 function re_access_activate() {
-    // RE_Access_Database::create_tables();
+    RE_Access_Database::create_tables();
     update_option('re_access_version', RE_ACCESS_VERSION);
     // flush_rewrite_rules();
 }
