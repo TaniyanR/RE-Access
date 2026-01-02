@@ -44,7 +44,6 @@ require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-rss-slots.php';
 function re_access_activate() {
     RE_Access_Database::create_tables();
     update_option('re_access_version', RE_ACCESS_VERSION);
-    flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 're_access_activate');
 
