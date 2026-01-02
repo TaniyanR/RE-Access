@@ -66,6 +66,8 @@ function re_access_dashboard_page() {
 
 /**
  * Initialize plugin update checker
+ * 
+ * TODO: Uncomment this function and the add_action below once the update checker issue is resolved
  */
 // function re_access_init_update_checker() {
 //     if (!is_admin()) {
