@@ -12,6 +12,18 @@ if (!defined('WPINC')) {
 class RE_Access_Sites {
     
     /**
+     * Normalize URL by removing trailing slashes and ensuring proper format
+     */
+    private static function normalize_url($url) {
+        if (empty($url)) {
+            return '';
+        }
+        $url = esc_url_raw($url);
+        $url = untrailingslashit($url);
+        return $url;
+    }
+    
+    /**
      * Initialize
      */
     public static function init() {
@@ -27,21 +39,35 @@ class RE_Access_Sites {
     public static function render() {
         global $wpdb;
         
-        // Get current tab (pagination for 30 sites per tab)
-        $current_tab = isset($_GET['tab']) ? (int)$_GET['tab'] : 1;
-        $per_page = 30;
-        $offset = ($current_tab - 1) * $per_page;
+        // Get current status tab (approved or pending)
+        $current_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : 'approved';
+        if (!in_array($current_status, ['approved', 'pending'], true)) {
+            $current_status = 'approved';
+        }
         
-        // Get sites
+        // Get current page for pagination
+        $current_page = isset($_GET['paged']) ? max(1, (int)$_GET['paged']) : 1;
+        $per_page = 30;
+        $offset = ($current_page - 1) * $per_page;
+        
+        // Get sites for current status
         $sites_table = $wpdb->prefix . 're_access_sites';
-        $total_sites = $wpdb->get_var("SELECT COUNT(*) FROM $sites_table");
-        $total_tabs = ceil($total_sites / $per_page);
+        $total_sites = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $sites_table WHERE status = %s",
+            $current_status
+        ));
+        $total_pages = ceil($total_sites / $per_page);
         
         $sites = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $sites_table ORDER BY created_at DESC LIMIT %d OFFSET %d",
+            "SELECT * FROM $sites_table WHERE status = %s ORDER BY created_at DESC LIMIT %d OFFSET %d",
+            $current_status,
             $per_page,
             $offset
         ));
+        
+        // Get counts for tabs
+        $approved_count = $wpdb->get_var("SELECT COUNT(*) FROM $sites_table WHERE status = 'approved'");
+        $pending_count = $wpdb->get_var("SELECT COUNT(*) FROM $sites_table WHERE status = 'pending'");
         
         // Handle edit mode
         $edit_site = null;
@@ -55,6 +81,22 @@ class RE_Access_Sites {
         ?>
         <div class="wrap re-access-sites">
             <h1><?php echo esc_html__('Site Registration', 're-access'); ?></h1>
+            
+            <?php
+            // Display success messages
+            if (isset($_GET['message'])) {
+                $message = sanitize_text_field($_GET['message']);
+                $messages = [
+                    'added' => __('Site added successfully and is pending approval.', 're-access'),
+                    'approved' => __('Site approved successfully.', 're-access'),
+                    'deleted' => __('Site deleted successfully.', 're-access'),
+                    'updated' => __('Site updated successfully.', 're-access'),
+                ];
+                if (isset($messages[$message])) {
+                    echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($messages[$message]) . '</p></div>';
+                }
+            }
+            ?>
             
             <?php if ($edit_site): ?>
                 <!-- Edit Form -->
@@ -123,15 +165,34 @@ class RE_Access_Sites {
                     </form>
                 </div>
                 
-                <!-- Tabs -->
-                <?php if ($total_tabs > 1): ?>
-                    <div class="nav-tab-wrapper" style="margin: 20px 0;">
-                        <?php for ($i = 1; $i <= $total_tabs; $i++): ?>
-                            <a href="?page=re-access-sites&tab=<?php echo $i; ?>" 
-                               class="nav-tab <?php echo $current_tab == $i ? 'nav-tab-active' : ''; ?>">
-                                <?php printf(esc_html__('Page %d', 're-access'), $i); ?>
-                            </a>
-                        <?php endfor; ?>
+                <!-- Status Tabs -->
+                <div class="nav-tab-wrapper" style="margin: 20px 0;">
+                    <a href="?page=re-access-sites&status=approved" 
+                       class="nav-tab <?php echo $current_status === 'approved' ? 'nav-tab-active' : ''; ?>">
+                        <?php printf(esc_html__('Approved (%d)', 're-access'), $approved_count); ?>
+                    </a>
+                    <a href="?page=re-access-sites&status=pending" 
+                       class="nav-tab <?php echo $current_status === 'pending' ? 'nav-tab-active' : ''; ?>">
+                        <?php printf(esc_html__('Pending (%d)', 're-access'), $pending_count); ?>
+                    </a>
+                </div>
+                
+                <!-- Pagination -->
+                <?php if ($total_pages > 1): ?>
+                    <div class="tablenav" style="margin: 10px 0;">
+                        <div class="tablenav-pages">
+                            <?php
+                            echo paginate_links([
+                                'base' => add_query_arg('paged', '%#%'),
+                                'format' => '',
+                                'prev_text' => __('&laquo; Previous', 're-access'),
+                                'next_text' => __('Next &raquo;', 're-access'),
+                                'total' => $total_pages,
+                                'current' => $current_page,
+                                'add_args' => ['status' => $current_status]
+                            ]);
+                            ?>
+                        </div>
                     </div>
                 <?php endif; ?>
                 
@@ -212,11 +273,14 @@ class RE_Access_Sites {
         global $wpdb;
         $table = $wpdb->prefix . 're_access_sites';
         
+        $site_url = self::normalize_url($_POST['site_url']);
+        $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
+        
         $wpdb->insert($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
-            'site_url' => esc_url_raw($_POST['site_url']),
-            'site_rss' => isset($_POST['site_rss']) ? esc_url_raw($_POST['site_rss']) : '',
-            'site_desc' => sanitize_textarea_field($_POST['site_desc']),
+            'site_url' => $site_url,
+            'site_rss' => $site_rss,
+            'site_desc' => sanitize_textarea_field($_POST['site_desc'] ?? ''),
             'status' => 'pending'
         ]);
         
@@ -226,7 +290,7 @@ class RE_Access_Sites {
             sanitize_text_field($_POST['site_name'])
         ), $wpdb->insert_id);
         
-        wp_redirect(admin_url('admin.php?page=re-access-sites&message=added'));
+        wp_redirect(admin_url('admin.php?page=re-access-sites&status=pending&message=added'));
         exit;
     }
     
@@ -257,7 +321,7 @@ class RE_Access_Sites {
             $site->site_name
         ), $site_id);
         
-        wp_redirect(admin_url('admin.php?page=re-access-sites&message=approved'));
+        wp_redirect(admin_url('admin.php?page=re-access-sites&status=approved&message=approved'));
         exit;
     }
     
@@ -276,6 +340,7 @@ class RE_Access_Sites {
         $site_id = (int)$_POST['site_id'];
         
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
+        $site_status = $site ? $site->status : 'approved';
         
         $wpdb->delete($table, ['id' => $site_id]);
         
@@ -288,7 +353,7 @@ class RE_Access_Sites {
             $site->site_name
         ), $site_id);
         
-        wp_redirect(admin_url('admin.php?page=re-access-sites&message=deleted'));
+        wp_redirect(admin_url('admin.php?page=re-access-sites&status=' . $site_status . '&message=deleted'));
         exit;
     }
     
@@ -306,17 +371,24 @@ class RE_Access_Sites {
         $table = $wpdb->prefix . 're_access_sites';
         $site_id = (int)$_POST['site_id'];
         
+        // Get current status before update
+        $current_site = $wpdb->get_row($wpdb->prepare("SELECT status FROM $table WHERE id = %d", $site_id));
+        $site_status = $current_site ? $current_site->status : 'approved';
+        
+        $site_url = self::normalize_url($_POST['site_url']);
+        $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
+        
         $wpdb->update($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
-            'site_url' => esc_url_raw($_POST['site_url']),
-            'site_rss' => isset($_POST['site_rss']) ? esc_url_raw($_POST['site_rss']) : '',
-            'site_desc' => sanitize_textarea_field($_POST['site_desc']),
+            'site_url' => $site_url,
+            'site_rss' => $site_rss,
+            'site_desc' => sanitize_textarea_field($_POST['site_desc'] ?? ''),
         ], ['id' => $site_id]);
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');
         
-        wp_redirect(admin_url('admin.php?page=re-access-sites&message=updated'));
+        wp_redirect(admin_url('admin.php?page=re-access-sites&status=' . $site_status . '&message=updated'));
         exit;
     }
 }

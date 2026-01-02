@@ -107,7 +107,7 @@ class RE_Access_Notices {
         $output .= '</ul>';
         $output .= '</div>';
         
-        return $output;
+        return apply_filters('re_access_notice_output', $output, $atts, $notices);
     }
     
     /**
@@ -125,6 +125,6 @@ class RE_Access_Notices {
         $output .= '<span class="notice-content">' . esc_html($notice->notice_content) . '</span>';
         $output .= '</div>';
         
-        return $output;
+        return apply_filters('re_access_notice_latest_output', $output, $notice);
     }
 }
