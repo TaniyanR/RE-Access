@@ -15,10 +15,7 @@
     "autoload": {
         "psr-4": {
             "ReAccess\\": "src/"
-        },
-        "files": [
-            "re-access.php"
-        ]
+        }
     },
     "config": {
         "platform": {
