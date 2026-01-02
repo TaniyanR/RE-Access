@@ -37,14 +37,26 @@ class RE_Access_Notices {
         global $wpdb;
         $table = $wpdb->prefix . 're_access_notices';
         
-        $wpdb->query($wpdb->prepare(
-            "DELETE FROM $table WHERE id NOT IN (
-                SELECT id FROM (
-                    SELECT id FROM $table ORDER BY created_at DESC LIMIT %d
-                ) AS tmp
-            )",
-            self::$max_notices
+        // Get count of notices
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
+        
+        // Only cleanup if we have more than max_notices
+        if ($count <= self::$max_notices) {
+            return;
+        }
+        
+        // Get the ID threshold (oldest ID to keep)
+        $threshold_id = $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM $table ORDER BY created_at DESC LIMIT 1 OFFSET %d",
+            self::$max_notices - 1
         ));
+        
+        if ($threshold_id) {
+            $wpdb->query($wpdb->prepare(
+                "DELETE FROM $table WHERE id < %d",
+                $threshold_id
+            ));
+        }
     }
     
     /**
