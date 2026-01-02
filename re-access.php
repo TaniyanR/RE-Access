@@ -30,7 +30,7 @@ require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 
 // Load plugin classes
 require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
-// require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
+require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-notices.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-dashboard.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-sites.php';
@@ -55,8 +55,10 @@ function re_access_init() {
     // Check and run database migrations if needed
     RE_Access_Database::check_migrations();
     
-    // Initialize tracking
-    // RE_Access_Tracker::init();
+    // Initialize tracking (class expected in includes/class-re-access-tracker.php)
+    if (class_exists('RE_Access_Tracker')) {
+        RE_Access_Tracker::init();
+    }
     
     // Initialize site management
     // RE_Access_Sites::init();

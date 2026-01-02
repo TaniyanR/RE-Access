@@ -233,12 +233,16 @@ class RE_Access_Tracker {
     }
     
     /**
-     * Get visitor hash (based on IP and user agent)
+     * Get visitor hash for unique user tracking
+     * Uses MD5 (per specification) of IP, user agent, and date with delimiters
+     * Note: MD5 is sufficient for non-cryptographic visitor identification
      */
     private static function get_visitor_hash() {
         $ip = self::get_client_ip();
         $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
-        return hash('sha256', $ip . $user_agent);
+        $date = current_time('Y-m-d');
+        // MD5 is used per specification for visitor tracking (non-cryptographic purpose)
+        return md5($ip . '|' . $user_agent . '|' . $date);
     }
     
     /**
