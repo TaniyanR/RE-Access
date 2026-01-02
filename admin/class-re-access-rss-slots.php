@@ -279,7 +279,7 @@ class RE_Access_RSS_Slots {
             $output .= $html;
         }
         
-        return $output;
+        return apply_filters('re_access_rss_slot_output', $output, $atts, $site, $feed_items);
     }
     
     /**
