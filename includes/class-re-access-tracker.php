@@ -370,7 +370,7 @@ class RE_Access_Tracker {
         
         // Additional security: Block hosts that start with common private patterns
         // This catches cases like '10.example.com' or '192.168.example.com'
-        if (preg_match('/^(10|127|172-16|192-168|localhost)\./i', $host)) {
+        if (preg_match('/^(10|127|172\.16|192\.168|localhost)\./i', $host)) {
             return false;
         }
         
