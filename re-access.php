@@ -32,7 +32,7 @@ if (file_exists($composer_autoload)) {
 }
 
 /*
- * Load plugin classes only when files exist to avoid fatal errors
+ * Load plugin classes only when files exist to avoid fatal errors.
  * This keeps the bootstrap resilient while features are incrementally added.
  */
 $maybe_require = function (string $path) {
@@ -62,7 +62,7 @@ function re_access_activate() {
         RE_Access_Database::create_tables();
     }
 
-    // Use the option key expected by the database/migration code.
+    // Use the option key expected by the DB/migration code.
     update_option('reaccess_version', RE_ACCESS_VERSION);
 
     // flush_rewrite_rules(); // enable if rewrite rules are added later
