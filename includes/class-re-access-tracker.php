@@ -267,7 +267,8 @@ class RE_Access_Tracker {
      */
     public static function handle_redirect_endpoint() {
         // Check if this is a redirect request
-        if (empty($_GET['reaccess_out']) || $_GET['reaccess_out'] !== '1') {
+        $reaccess_out = isset($_GET['reaccess_out']) ? sanitize_text_field(wp_unslash($_GET['reaccess_out'])) : '';
+        if ($reaccess_out !== '1') {
             return;
         }
         
@@ -276,7 +277,7 @@ class RE_Access_Tracker {
         }
         
         // Decode base64url encoded URL
-        $encoded_url = sanitize_text_field($_GET['to']);
+        $encoded_url = sanitize_text_field(wp_unslash($_GET['to']));
         $decoded_url = self::base64url_decode($encoded_url);
         
         if (!$decoded_url) {
@@ -345,7 +346,7 @@ class RE_Access_Tracker {
         $host_for_validation = trim($host, '[]');
         
         // Block common loopback patterns
-        if (preg_match('/^(::1|::ffff:127\.0\.0\.1)$/i', $host_for_validation)) {
+        if (preg_match('/^(::1|::ffff:127\\.0\\.0\\.1)$/i', $host_for_validation)) {
             return false;
         }
         
@@ -369,8 +370,9 @@ class RE_Access_Tracker {
         }
         
         // Additional security: Block hosts that start with common private patterns
-        // This catches cases like '10.example.com' or '192.168.example.com'
-        if (preg_match('/^(10|127|172\.16|192\.168|localhost)\./i', $host)) {
+        // This catches cases like '10.example.com', '172.16-31.example.com', or '192.168.example.com'
+        // The filter_var above handles actual IPs, this handles domain-based bypasses
+        if (preg_match('/^(10|127|172\\.(?:1[6-9]|2[0-9]|3[01])|192\\.168|localhost)\./i', $host)) {
             return false;
         }
         
