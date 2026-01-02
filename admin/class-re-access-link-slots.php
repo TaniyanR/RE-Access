@@ -220,6 +220,6 @@ class RE_Access_Link_Slots {
         $output = '<style>' . esc_html($css) . '</style>';
         $output .= $html;
         
-        return $output;
+        return apply_filters('re_access_link_slot_output', $output, $atts, $site);
     }
 }
