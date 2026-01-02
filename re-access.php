@@ -26,7 +26,7 @@ define('RE_ACCESS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Load Composer autoloader
-require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
+// require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 
 /**
  * Activation hook: Save plugin version
