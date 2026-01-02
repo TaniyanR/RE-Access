@@ -29,7 +29,7 @@ define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 // require_once RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 
 // Load plugin classes
-// require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
+require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-database.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-tracker.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'includes/class-re-access-notices.php';
 // require_once RE_ACCESS_PLUGIN_DIR . 'admin/class-re-access-dashboard.php';
@@ -42,8 +42,8 @@ define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
  * Activation hook: Create tables and save plugin version
  */
 function re_access_activate() {
-    // RE_Access_Database::create_tables();
-    update_option('re_access_version', RE_ACCESS_VERSION);
+    RE_Access_Database::create_tables();
+    update_option('reaccess_version', RE_ACCESS_VERSION);
     // flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 're_access_activate');
@@ -52,6 +52,9 @@ register_activation_hook(__FILE__, 're_access_activate');
  * Initialize plugin
  */
 function re_access_init() {
+    // Check and run database migrations if needed
+    RE_Access_Database::check_migrations();
+    
     // Initialize tracking
     // RE_Access_Tracker::init();
     
@@ -65,7 +68,7 @@ function re_access_init() {
     // add_shortcode('reaccess_link_slot', ['RE_Access_Link_Slots', 'shortcode_link_slot']);
     // add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
 }
-// add_action('init', 're_access_init');
+add_action('init', 're_access_init');
 
 /**
  * Add admin menu
