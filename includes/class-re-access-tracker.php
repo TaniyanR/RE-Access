@@ -26,7 +26,7 @@ class RE_Access_Tracker {
         add_action('wp_ajax_nopriv_re_access_track_out', [__CLASS__, 'ajax_track_out']);
         
         // Handle redirect endpoint for OUT tracking
-        add_action('init', [__CLASS__, 'handle_redirect_endpoint']);
+        add_action('template_redirect', [__CLASS__, 'handle_redirect_endpoint']);
     }
     
     /**
@@ -323,14 +323,11 @@ class RE_Access_Tracker {
      * Only allow HTTP/HTTPS URLs and ensure they're not pointing back to this site
      */
     private static function validate_redirect_url($url) {
-        // Sanitize URL
-        $url = esc_url_raw($url);
-        
         if (empty($url)) {
             return false;
         }
         
-        // Parse URL
+        // Parse URL before sanitization to validate original structure
         $parsed = wp_parse_url($url);
         
         if (!$parsed || empty($parsed['scheme']) || empty($parsed['host'])) {
@@ -342,16 +339,26 @@ class RE_Access_Tracker {
             return false;
         }
         
-        // Prevent redirects to localhost, private IPs, or same site
         $host = $parsed['host'];
         
-        // Block localhost and local addresses
-        if (in_array($host, ['localhost', '127.0.0.1', '0.0.0.0', '::1'], true)) {
+        // Remove brackets from IPv6 addresses for validation
+        $host_for_validation = trim($host, '[]');
+        
+        // Block common loopback patterns
+        if (preg_match('/^(::1|::ffff:127\.0\.0\.1)$/i', $host_for_validation)) {
             return false;
         }
         
-        // Block private IP ranges (basic check)
-        if (preg_match('/^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/', $host)) {
+        // Check if host is an IP address and validate it's not private/local
+        if (filter_var($host_for_validation, FILTER_VALIDATE_IP)) {
+            // Block private, reserved, and loopback IPs
+            if (!filter_var($host_for_validation, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return false;
+            }
+        }
+        
+        // Block localhost by name
+        if (in_array(strtolower($host), ['localhost', 'localhost.localdomain'], true)) {
             return false;
         }
         
@@ -361,7 +368,16 @@ class RE_Access_Tracker {
             return false;
         }
         
-        return $url;
+        // Additional security: Block hosts that start with common private patterns
+        // This catches cases like '10.example.com' or '192.168.example.com'
+        if (preg_match('/^(10|127|172-16|192-168|localhost)\./i', $host)) {
+            return false;
+        }
+        
+        // Sanitize URL after validation
+        $url = esc_url_raw($url);
+        
+        return empty($url) ? false : $url;
     }
     
     /**
