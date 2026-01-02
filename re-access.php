@@ -125,13 +125,6 @@ function re_access_admin_menu() {
 add_action('admin_menu', 're_access_admin_menu');
 
 /**
- * Dashboard page callback (legacy - now using RE_Access_Dashboard::render())
- */
-function re_access_dashboard_page() {
-    RE_Access_Dashboard::render();
-}
-
-/**
  * Initialize plugin update checker
  */
 function re_access_init_update_checker() {
