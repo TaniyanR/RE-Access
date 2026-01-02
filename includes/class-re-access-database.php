@@ -154,7 +154,7 @@ class RE_Access_Database {
         
         // Parse URL
         $parsed = parse_url($url);
-        if ($parsed === false || !isset($parsed['host'])) {
+        if ($parsed === false || $parsed === null || !isset($parsed['host'])) {
             return '';
         }
         
@@ -169,7 +169,7 @@ class RE_Access_Database {
         
         // Remove default ports
         if (isset($parsed['port'])) {
-            if ($parsed['port'] != 80 && $parsed['port'] != 443) {
+            if ($parsed['port'] !== 80 && $parsed['port'] !== 443) {
                 $host .= ':' . $parsed['port'];
             }
         }
@@ -243,7 +243,7 @@ class RE_Access_Database {
         // Extract the base domain from normalized URL
         $parts = explode('/', $normalized, 2);
         $base_domain = $parts[0];
-        $path = isset($parts[1]) ? '/' . $parts[1] : '';
+        $path = isset($parts[1]) && $parts[1] !== '' ? '/' . $parts[1] : '';
         
         // Check if base domain is an alias
         if (isset($aliases[$base_domain])) {
