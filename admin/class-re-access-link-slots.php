@@ -172,7 +172,8 @@ class RE_Access_Link_Slots {
         $html = str_replace('[rr_site_url]', 'https://example.com', $html);
         $html = str_replace('[rr_site_desc]', 'This is an example site description for preview purposes.', $html);
         
-        $output = '<style>' . esc_html($css) . '</style>';
+        // CSS is already sanitized on save, output directly in style tag
+        $output = '<style>' . wp_strip_all_tags($css) . '</style>';
         $output .= $html;
         
         return $output;
@@ -217,7 +218,8 @@ class RE_Access_Link_Slots {
         $html = str_replace('[rr_site_url]', esc_url($site->site_url), $html);
         $html = str_replace('[rr_site_desc]', esc_html($site->site_desc), $html);
         
-        $output = '<style>' . esc_html($css) . '</style>';
+        // CSS is already sanitized on save, output directly in style tag
+        $output = '<style>' . wp_strip_all_tags($css) . '</style>';
         $output .= $html;
         
         return apply_filters('re_access_link_slot_output', $output, $atts, $site);
