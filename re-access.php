@@ -66,22 +66,24 @@ function re_access_dashboard_page() {
 
 /**
  * Initialize plugin update checker
+ * 
+ * TODO: Uncomment this function and the add_action below once the update checker issue is resolved
  */
-function re_access_init_update_checker() {
-    if (!is_admin()) {
-        return;
-    }
-    
-    $updateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
-        'https://github.com/TaniyanR/RE-Access',
-        __FILE__,
-        're-access'
-    );
-    
-    // Set the branch for updates (defaults to 'main')
-    $updateChecker->setBranch('main');
-    
-    // Enable release assets (for GitHub Releases)
-    $updateChecker->getVcsApi()->enableReleaseAssets();
-}
-add_action('plugins_loaded', 're_access_init_update_checker');
+// function re_access_init_update_checker() {
+//     if (!is_admin()) {
+//         return;
+//     }
+//     
+//     $updateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+//         'https://github.com/TaniyanR/RE-Access',
+//         __FILE__,
+//         're-access'
+//     );
+//     
+//     // Set the branch for updates (defaults to 'main')
+//     $updateChecker->setBranch('main');
+//     
+//     // Enable release assets (for GitHub Releases)
+//     $updateChecker->getVcsApi()->enableReleaseAssets();
+// }
+// add_action('plugins_loaded', 're_access_init_update_checker');
