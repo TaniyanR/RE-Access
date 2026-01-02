@@ -30,6 +30,13 @@ class RE_Access_RSS_Slots {
         <div class="wrap re-access-rss-slots">
             <h1><?php echo esc_html__('RSS Slots', 're-access'); ?></h1>
             
+            <!-- Warning Note -->
+            <div class="notice notice-warning" style="margin: 20px 0; padding: 10px;">
+                <p><strong><?php esc_html_e('Important Note:', 're-access'); ?></strong></p>
+                <p><?php esc_html_e('RSS feeds are fetched from external sites. Heavy usage may impact your site performance. The plugin uses caching to minimize load, but please monitor your site\'s performance when using multiple RSS slots.', 're-access'); ?></p>
+                <p><?php esc_html_e('Cached RSS feeds are automatically refreshed based on the cache duration setting.', 're-access'); ?></p>
+            </div>
+            
             <!-- Slot Tabs -->
             <div class="nav-tab-wrapper" style="margin: 20px 0;">
                 <?php for ($i = 1; $i <= 10; $i++): ?>
@@ -57,6 +64,13 @@ class RE_Access_RSS_Slots {
                         <tr>
                             <th><?php esc_html_e('Items to Display', 're-access'); ?></th>
                             <td><input type="number" name="item_count" value="<?php echo esc_attr($slot_data['item_count']); ?>" min="1" max="50"></td>
+                        </tr>
+                        <tr>
+                            <th><?php esc_html_e('Cache Duration (minutes)', 're-access'); ?></th>
+                            <td>
+                                <input type="number" name="cache_duration" value="<?php echo esc_attr($slot_data['cache_duration']); ?>" min="10" max="1440">
+                                <p class="description"><?php esc_html_e('How long to cache RSS feed data (10-1440 minutes). Default: 30 minutes.', 're-access'); ?></p>
+                            </td>
                         </tr>
                         <tr>
                             <th><?php esc_html_e('HTML Template', 're-access'); ?></th>
@@ -108,6 +122,7 @@ class RE_Access_RSS_Slots {
         $defaults = [
             'description' => '',
             'item_count' => 5,
+            'cache_duration' => 30,
             'html_template' => '<div class="re-rss-item">
     [rr_item_image]
     <div class="re-rss-content">
@@ -178,6 +193,7 @@ class RE_Access_RSS_Slots {
         $data = [
             'description' => sanitize_text_field($_POST['description']),
             'item_count' => (int)$_POST['item_count'],
+            'cache_duration' => max(10, min(1440, (int)$_POST['cache_duration'])),
             'html_template' => wp_kses_post($_POST['html_template']),
             'css_template' => sanitize_textarea_field($_POST['css_template'])
         ];
@@ -250,8 +266,8 @@ class RE_Access_RSS_Slots {
         // Get slot template
         $slot_data = self::get_slot_data($slot);
         
-        // Fetch RSS feed
-        $feed_items = self::fetch_rss_feed($site->site_rss, $slot_data['item_count']);
+        // Fetch RSS feed with caching
+        $feed_items = self::fetch_rss_feed($site->site_rss, $slot_data['item_count'], $slot_data['cache_duration']);
         
         if (empty($feed_items)) {
             return '<p>' . esc_html__('No RSS items available', 're-access') . '</p>';
@@ -283,9 +299,19 @@ class RE_Access_RSS_Slots {
     }
     
     /**
-     * Fetch RSS feed
+     * Fetch RSS feed with caching
      */
-    private static function fetch_rss_feed($feed_url, $limit) {
+    private static function fetch_rss_feed($feed_url, $limit, $cache_duration = 30) {
+        // Create a unique cache key for this feed
+        $cache_key = 're_access_rss_' . md5($feed_url . '_' . $limit);
+        
+        // Try to get cached data
+        $cached_items = get_transient($cache_key);
+        if ($cached_items !== false) {
+            return $cached_items;
+        }
+        
+        // Fetch fresh feed data
         $feed = fetch_feed($feed_url);
         
         if (is_wp_error($feed)) {
@@ -308,7 +334,7 @@ class RE_Access_RSS_Slots {
             if (empty($image)) {
                 $content = $item->get_content();
                 if (!empty($content)) {
-                    // Use WordPress built-in function to extract first image
+                    // Use DOMDocument to extract first image
                     libxml_use_internal_errors(true);
                     $dom = new DOMDocument();
                     $dom->loadHTML('<?xml encoding="utf-8" ?>' . $content);
@@ -328,6 +354,9 @@ class RE_Access_RSS_Slots {
                 'image' => $image
             ];
         }
+        
+        // Cache the results (convert minutes to seconds)
+        set_transient($cache_key, $items, $cache_duration * 60);
         
         return $items;
     }
