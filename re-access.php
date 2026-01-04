@@ -31,6 +31,11 @@ if (file_exists($composer_autoload)) {
     require_once $composer_autoload;
 }
 
+// Set up plugin-update-checker backwards compatible class alias
+if (!class_exists('Puc_v4_Factory', false) && class_exists('YahnisElsts\PluginUpdateChecker\v5p6\PucFactory', true)) {
+    class_alias('YahnisElsts\PluginUpdateChecker\v5p6\PucFactory', 'Puc_v4_Factory');
+}
+
 /*
  * Load plugin classes only when files exist to avoid fatal errors.
  * This keeps the bootstrap resilient while features are incrementally added.
