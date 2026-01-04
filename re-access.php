@@ -206,8 +206,8 @@ function re_access_init_update_checker() {
         $github_url = 'https://github.com/TaniyanR/RE-Access';
     }
 
-    if (class_exists('\YahnisElsts\PluginUpdateChecker\v5\PucFactory')) {
-        $updateChecker = \YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+    if (class_exists('Puc_v4_Factory')) {
+        $updateChecker = Puc_v4_Factory::buildUpdateChecker(
             $github_url,
             __FILE__,
             're-access'
