@@ -39,7 +39,7 @@ class RE_Access_Notices {
         
         // Get count of notices
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        $count = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}reaccess_notice");
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
         
         // Only cleanup if we have more than max_notices
         if ($count <= self::$max_notices) {
@@ -81,7 +81,7 @@ class RE_Access_Notices {
         $table = $wpdb->prefix . 'reaccess_notice';
         
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        return $wpdb->get_row("SELECT * FROM {$wpdb->prefix}reaccess_notice ORDER BY created_at DESC LIMIT 1");
+        return $wpdb->get_row("SELECT * FROM $table ORDER BY created_at DESC LIMIT 1");
     }
     
     /**
