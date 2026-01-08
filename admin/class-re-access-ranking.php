@@ -207,7 +207,7 @@ class RE_Access_Ranking {
      */
     private static function get_settings() {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_settings';
+        $table = $wpdb->prefix . 'reaccess_settings';
         
         $defaults = [
             'period' => '7',
@@ -220,7 +220,7 @@ class RE_Access_Ranking {
             'text' => '#ffffff'
         ];
         
-        $saved = $wpdb->get_row("SELECT setting_value FROM $table WHERE setting_key = 'ranking_settings'");
+        $saved = $wpdb->get_row($wpdb->prepare("SELECT setting_value FROM $table WHERE setting_key = %s", 'ranking_settings'));
         
         if ($saved) {
             return array_merge($defaults, json_decode($saved->setting_value, true));
@@ -234,7 +234,7 @@ class RE_Access_Ranking {
      */
     private static function save_settings() {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_settings';
+        $table = $wpdb->prefix . 'reaccess_settings';
         
         $settings = [
             'period' => sanitize_text_field($_POST['period']),

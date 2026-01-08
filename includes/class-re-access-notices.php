@@ -18,7 +18,7 @@ class RE_Access_Notices {
      */
     public static function add_notice($type, $content, $site_id = null) {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_notices';
+        $table = $wpdb->prefix . 'reaccess_notice';
         
         $wpdb->insert($table, [
             'notice_type' => sanitize_text_field($type),
@@ -35,10 +35,11 @@ class RE_Access_Notices {
      */
     private static function cleanup_old_notices() {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_notices';
+        $table = $wpdb->prefix . 'reaccess_notice';
         
         // Get count of notices
-        $count = $wpdb->get_var("SELECT COUNT(*) FROM $table");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $count = $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
         
         // Only cleanup if we have more than max_notices
         if ($count <= self::$max_notices) {
@@ -64,7 +65,7 @@ class RE_Access_Notices {
      */
     public static function get_notices($limit = 10) {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_notices';
+        $table = $wpdb->prefix . 'reaccess_notice';
         
         return $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM $table ORDER BY created_at DESC LIMIT %d",
@@ -77,9 +78,10 @@ class RE_Access_Notices {
      */
     public static function get_latest_notice() {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_notices';
+        $table = $wpdb->prefix . 'reaccess_notice';
         
-        return $wpdb->get_row("SELECT * FROM $table ORDER BY created_at DESC LIMIT 1");
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        return $wpdb->get_row("SELECT * FROM `{$table}` ORDER BY created_at DESC LIMIT 1");
     }
     
     /**

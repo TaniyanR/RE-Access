@@ -17,7 +17,9 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-re-access-database.php'
 RE_Access_Database::drop_tables();
 
 // Remove plugin options
-delete_option('reaccess_version');
+delete_option('re_access_version');
+delete_option('re_access_url_aliases');
+delete_option('re_access_github_url');
 
 // Clean up transients - WordPress doesn't support wildcard deletion
 // So we delete specific known transients

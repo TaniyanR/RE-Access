@@ -126,7 +126,7 @@ class RE_Access_RSS_Slots {
      */
     private static function get_slot_data($slot) {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_settings';
+        $table = $wpdb->prefix . 'reaccess_settings';
         
         $defaults = [
             'description' => '',
@@ -195,7 +195,7 @@ class RE_Access_RSS_Slots {
      */
     private static function save_slot() {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_settings';
+        $table = $wpdb->prefix . 'reaccess_settings';
         
         $slot = (int)$_POST['slot_number'];
         
@@ -262,7 +262,7 @@ class RE_Access_RSS_Slots {
         
         // Get site data
         global $wpdb;
-        $sites_table = $wpdb->prefix . 're_access_sites';
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
         $site = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM $sites_table WHERE id = %d AND status = 'approved'",
             $site_id
