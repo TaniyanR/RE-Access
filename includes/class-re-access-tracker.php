@@ -116,7 +116,7 @@ class RE_Access_Tracker {
         $sites = get_transient($cache_key);
         
         if (false === $sites) {
-            $sites = $wpdb->get_results("SELECT id, site_url FROM $sites_table WHERE status = 'approved'");
+            $sites = $wpdb->get_results($wpdb->prepare("SELECT id, site_url FROM $sites_table WHERE status = %s", 'approved'));
             set_transient($cache_key, $sites, HOUR_IN_SECONDS);
         }
         
@@ -207,7 +207,7 @@ class RE_Access_Tracker {
         $sites = get_transient($cache_key);
         
         if (false === $sites) {
-            $sites = $wpdb->get_results("SELECT id, site_url FROM $sites_table WHERE status = 'approved'");
+            $sites = $wpdb->get_results($wpdb->prepare("SELECT id, site_url FROM $sites_table WHERE status = %s", 'approved'));
             set_transient($cache_key, $sites, HOUR_IN_SECONDS);
         }
         

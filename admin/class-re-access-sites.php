@@ -66,8 +66,8 @@ class RE_Access_Sites {
         ));
         
         // Get counts for tabs
-        $approved_count = $wpdb->get_var("SELECT COUNT(*) FROM $sites_table WHERE status = 'approved'");
-        $pending_count = $wpdb->get_var("SELECT COUNT(*) FROM $sites_table WHERE status = 'pending'");
+        $approved_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'approved'));
+        $pending_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'pending'));
         
         // Handle edit mode
         $edit_site = null;

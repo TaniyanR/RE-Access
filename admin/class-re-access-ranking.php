@@ -220,7 +220,7 @@ class RE_Access_Ranking {
             'text' => '#ffffff'
         ];
         
-        $saved = $wpdb->get_row("SELECT setting_value FROM $table WHERE setting_key = 'ranking_settings'");
+        $saved = $wpdb->get_row($wpdb->prepare("SELECT setting_value FROM $table WHERE setting_key = %s", 'ranking_settings'));
         
         if ($saved) {
             return array_merge($defaults, json_decode($saved->setting_value, true));
