@@ -51,7 +51,7 @@ class RE_Access_Sites {
         $offset = ($current_page - 1) * $per_page;
         
         // Get sites for current status
-        $sites_table = $wpdb->prefix . 're_access_sites';
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
         $total_sites = $wpdb->get_var($wpdb->prepare(
             "SELECT COUNT(*) FROM $sites_table WHERE status = %s",
             $current_status
@@ -271,7 +271,7 @@ class RE_Access_Sites {
         }
         
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_sites';
+        $table = $wpdb->prefix . 'reaccess_sites';
         
         $site_url = self::normalize_url($_POST['site_url']);
         $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
@@ -305,7 +305,7 @@ class RE_Access_Sites {
         }
         
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_sites';
+        $table = $wpdb->prefix . 'reaccess_sites';
         $site_id = (int)$_POST['site_id'];
         
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
@@ -336,7 +336,7 @@ class RE_Access_Sites {
         }
         
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_sites';
+        $table = $wpdb->prefix . 'reaccess_sites';
         $site_id = (int)$_POST['site_id'];
         
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
@@ -368,7 +368,7 @@ class RE_Access_Sites {
         }
         
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_sites';
+        $table = $wpdb->prefix . 'reaccess_sites';
         $site_id = (int)$_POST['site_id'];
         
         // Get current status before update

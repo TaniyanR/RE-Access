@@ -207,7 +207,7 @@ class RE_Access_Ranking {
      */
     private static function get_settings() {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_settings';
+        $table = $wpdb->prefix . 'reaccess_settings';
         
         $defaults = [
             'period' => '7',
@@ -234,7 +234,7 @@ class RE_Access_Ranking {
      */
     private static function save_settings() {
         global $wpdb;
-        $table = $wpdb->prefix . 're_access_settings';
+        $table = $wpdb->prefix . 'reaccess_settings';
         
         $settings = [
             'period' => sanitize_text_field($_POST['period']),

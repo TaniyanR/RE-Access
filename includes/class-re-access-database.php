@@ -27,7 +27,8 @@ class RE_Access_Database {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             site_name varchar(255) NOT NULL,
             site_url varchar(512) NOT NULL,
-            rss_url varchar(512) DEFAULT '',
+            site_rss varchar(512) DEFAULT '',
+            site_desc text DEFAULT '',
             status varchar(20) DEFAULT 'pending',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -82,6 +83,19 @@ class RE_Access_Database {
             KEY site_id (site_id)
         ) $charset_collate;";
         dbDelta($sql_notice);
+
+        // Settings table (for storing plugin configuration)
+        $table_settings = $wpdb->prefix . 'reaccess_settings';
+        $sql_settings = "CREATE TABLE $table_settings (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            setting_key varchar(255) NOT NULL,
+            setting_value longtext NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY setting_key (setting_key)
+        ) $charset_collate;";
+        dbDelta($sql_settings);
     }
 
     /**
@@ -96,6 +110,7 @@ class RE_Access_Database {
             'reaccess_daily',
             'reaccess_site_daily',
             'reaccess_notice',
+            'reaccess_settings',
         ];
 
         foreach ($table_names as $table_name) {
@@ -259,7 +274,7 @@ class RE_Access_Database {
      * updates the saved version.
      */
     public static function check_migrations() {
-        $saved_version = get_option('reaccess_version', '0.0.0');
+        $saved_version = get_option('re_access_version', '0.0.0');
 
         // If RE_ACCESS_VERSION is not defined, skip migrations (caller/plugin bootstrap should define it)
         if (!defined('RE_ACCESS_VERSION')) {
@@ -279,7 +294,7 @@ class RE_Access_Database {
         // }
 
         // Update version after migrations
-        update_option('reaccess_version', $current_version);
+        update_option('re_access_version', $current_version);
     }
 
     /**
