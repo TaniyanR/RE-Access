@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'taniyanr/re-access',
-        'pretty_version' => 'dev-copilot/initialize-plugin-skeleton-again',
-        'version' => 'dev-copilot/initialize-plugin-skeleton-again',
-        'reference' => 'bfd5f86c702530a5f906fd40e22b53db8c273c02',
+        'pretty_version' => 'dev-copilot/fix-composer-autoload-issues',
+        'version' => 'dev-copilot/fix-composer-autoload-issues',
+        'reference' => '55956271dbe7bc669a256d3fb7d402376872caa9',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -11,9 +11,9 @@
     ),
     'versions' => array(
         'taniyanr/re-access' => array(
-            'pretty_version' => 'dev-copilot/initialize-plugin-skeleton-again',
-            'version' => 'dev-copilot/initialize-plugin-skeleton-again',
-            'reference' => 'bfd5f86c702530a5f906fd40e22b53db8c273c02',
+            'pretty_version' => 'dev-copilot/fix-composer-autoload-issues',
+            'version' => 'dev-copilot/fix-composer-autoload-issues',
+            'reference' => '55956271dbe7bc669a256d3fb7d402376872caa9',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
