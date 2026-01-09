@@ -3,7 +3,7 @@
         'name' => 'taniyanr/re-access',
         'pretty_version' => 'dev-copilot/fix-composer-autoload-issues',
         'version' => 'dev-copilot/fix-composer-autoload-issues',
-        'reference' => '55956271dbe7bc669a256d3fb7d402376872caa9',
+        'reference' => '24ca908e7bc36114cab5beb9c4f82cf92a197a14',
         'type' => 'wordpress-plugin',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'taniyanr/re-access' => array(
             'pretty_version' => 'dev-copilot/fix-composer-autoload-issues',
             'version' => 'dev-copilot/fix-composer-autoload-issues',
-            'reference' => '55956271dbe7bc669a256d3fb7d402376872caa9',
+            'reference' => '24ca908e7bc36114cab5beb9c4f82cf92a197a14',
             'type' => 'wordpress-plugin',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
