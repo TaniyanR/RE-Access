@@ -30,11 +30,13 @@ class RE_Access_Database {
             site_rss varchar(512) DEFAULT '',
             site_desc text DEFAULT '',
             status varchar(20) DEFAULT 'pending',
+            link_slot int(11) DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY status (status),
-            KEY created_at (created_at)
+            KEY created_at (created_at),
+            KEY link_slot (link_slot)
         ) $charset_collate;";
         dbDelta($sql_sites);
 
@@ -292,9 +294,41 @@ class RE_Access_Database {
         // if (version_compare($saved_version, '1.1.0', '<')) {
         //     self::migrate_to_1_1_0();
         // }
+        
+        // Migration to add link_slot column
+        if (version_compare($saved_version, '1.1.0', '<')) {
+            self::migrate_to_1_1_0();
+        }
 
         // Update version after migrations
         update_option('re_access_version', $current_version);
+    }
+
+    /**
+     * Migration to version 1.1.0 - Add link_slot column
+     */
+    private static function migrate_to_1_1_0() {
+        global $wpdb;
+        $table_sites = $wpdb->prefix . 'reaccess_sites';
+        
+        // Check if column already exists
+        $column_exists = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'link_slot'",
+                DB_NAME,
+                $table_sites
+            )
+        );
+        
+        // Add column if it doesn't exist
+        if (empty($column_exists)) {
+            $wpdb->query(
+                "ALTER TABLE `{$table_sites}` 
+                ADD COLUMN `link_slot` int(11) DEFAULT NULL AFTER `status`,
+                ADD KEY `link_slot` (`link_slot`)"
+            );
+        }
     }
 
     /**
