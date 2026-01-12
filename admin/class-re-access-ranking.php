@@ -252,7 +252,7 @@ class RE_Access_Ranking {
             'head_bg' => sanitize_hex_color($_POST['head_bg']),
             'text' => sanitize_hex_color($_POST['text']),
             'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
-            'css_template' => isset($_POST['css_template']) ? sanitize_textarea_field($_POST['css_template']) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
+            'css_template' => isset($_POST['css_template']) ? wp_strip_all_tags(sanitize_textarea_field($_POST['css_template'])) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
         
         $wpdb->query($wpdb->prepare(
@@ -301,15 +301,18 @@ class RE_Access_Ranking {
         $placeholder_pos = strpos($html, '[ranking_items]');
         if ($placeholder_pos !== false) {
             $html = substr_replace($html, $items_html, $placeholder_pos, strlen('[ranking_items]'));
+        } else {
+            // Fallback: if placeholder not found, wrap items in default container
+            $html = '<div class="ranking-list">' . $items_html . '</div>';
         }
         
-        // Add CSS (already sanitized, no need to escape)
+        // Add CSS (already sanitized and stripped of tags, safe to output directly)
         $css = '<style>' . $settings['css_template'] . '</style>';
         
-        // Wrap in a container with class
+        // Wrap in a container with class (HTML already sanitized during save)
         $output = '<div class="re-access-ranking">';
         $output .= $css;
-        $output .= wp_kses_post($html);
+        $output .= $html;
         $output .= '</div>';
         
         return $output;
