@@ -311,18 +311,15 @@ class RE_Access_Database {
         global $wpdb;
         $table_sites = $wpdb->prefix . 'reaccess_sites';
         
-        // Check if column already exists
+        // Check if column already exists using SHOW COLUMNS
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
         $column_exists = $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS 
-                WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'link_slot'",
-                DB_NAME,
-                $table_sites
-            )
+            "SHOW COLUMNS FROM `{$table_sites}` LIKE 'link_slot'"
         );
         
         // Add column if it doesn't exist
         if (empty($column_exists)) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $wpdb->query(
                 "ALTER TABLE `{$table_sites}` 
                 ADD COLUMN `link_slot` int(11) DEFAULT NULL AFTER `status`,
