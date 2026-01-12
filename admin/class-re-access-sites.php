@@ -357,10 +357,18 @@ class RE_Access_Sites {
         
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
         
-        $wpdb->update($table, ['status' => 'rejected'], ['id' => $site_id]);
+        if (!$site) {
+            wp_die(__('Site not found.', 're-access'));
+        }
+        
+        $result = $wpdb->update($table, ['status' => 'rejected'], ['id' => $site_id]);
+        
+        if ($result === false) {
+            wp_die(__('Database error: Failed to reject site.', 're-access'));
+        }
         
         // Create notice
-        if (class_exists('RE_Access_Notices') && $site) {
+        if (class_exists('RE_Access_Notices')) {
             RE_Access_Notices::add_notice('site_rejected', sprintf(
                 __('Site rejected: %s', 're-access'),
                 $site->site_name

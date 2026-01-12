@@ -24,7 +24,7 @@ class RE_Access_Frontend_Registration {
     public static function enqueue_styles() {
         // Only enqueue if shortcode is present on the page
         global $post;
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'reaccess_register')) {
+        if (is_a($post, 'WP_Post') && $post && has_shortcode($post->post_content, 'reaccess_register')) {
             wp_add_inline_style('wp-block-library', self::get_custom_css());
         }
     }
@@ -225,9 +225,8 @@ class RE_Access_Frontend_Registration {
             $success_html = '<div class="reaccess-success-message">' . esc_html($success_message) . '</div>';
             $html = str_replace('[success_message]', $success_html, $html);
             
-            // Hide form on success by wrapping it in a hidden div
-            $html = preg_replace('/<form([^>]*)>/', '<div style="display:none;"><form$1>', $html);
-            $html = str_replace('</form>', '</form></div>', $html);
+            // Hide form on success by adding a hidden class
+            $html = str_replace('<form method="post">', '<form method="post" class="reaccess-form-hidden" style="display:none;">', $html);
         } else {
             $html = str_replace('[success_message]', '', $html);
         }
@@ -292,7 +291,7 @@ class RE_Access_Frontend_Registration {
         
         // Normalize URLs for consistency
         $site_url = untrailingslashit($site_url);
-        $rss_url = untrailingslashit($rss_url);
+        $rss_url = !empty($rss_url) ? untrailingslashit($rss_url) : '';
         
         // Check for duplicates
         $sites_table = $wpdb->prefix . 'reaccess_sites';

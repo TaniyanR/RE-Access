@@ -16,6 +16,33 @@ class RE_Access_Registration_Form {
      */
     public static function init() {
         add_action('admin_post_re_access_save_registration_form_settings', [__CLASS__, 'handle_save_settings']);
+        add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_admin_scripts']);
+    }
+    
+    /**
+     * Enqueue admin scripts
+     */
+    public static function enqueue_admin_scripts($hook) {
+        // Only load on our settings page
+        if ($hook !== 're-access_page_re-access-registration-form') {
+            return;
+        }
+        
+        wp_add_inline_script('jquery', '
+            jQuery(document).ready(function($) {
+                $("#reset-html-template").on("click", function(e) {
+                    e.preventDefault();
+                    var defaultHtml = ' . wp_json_encode(self::get_default_html()) . ';
+                    $("[name=html_template]").val(defaultHtml);
+                });
+                
+                $("#reset-css-template").on("click", function(e) {
+                    e.preventDefault();
+                    var defaultCss = ' . wp_json_encode(self::get_default_css()) . ';
+                    $("[name=css_template]").val(defaultCss);
+                });
+            });
+        ');
     }
     
     /**
@@ -84,7 +111,7 @@ class RE_Access_Registration_Form {
                     <p><?php esc_html_e('Customize the HTML structure of the registration form:', 're-access'); ?></p>
                     <textarea name="html_template" rows="20" style="width: 100%; font-family: monospace;"><?php echo esc_textarea($html_template); ?></textarea>
                     <p>
-                        <button type="button" class="button" onclick="document.querySelector('[name=html_template]').value = <?php echo esc_js(wp_json_encode(self::get_default_html())); ?>">
+                        <button type="button" id="reset-html-template" class="button">
                             <?php esc_html_e('Reset to Default', 're-access'); ?>
                         </button>
                     </p>
@@ -95,7 +122,7 @@ class RE_Access_Registration_Form {
                     <p><?php esc_html_e('Customize the styling of the registration form:', 're-access'); ?></p>
                     <textarea name="css_template" rows="20" style="width: 100%; font-family: monospace;"><?php echo esc_textarea($css_template); ?></textarea>
                     <p>
-                        <button type="button" class="button" onclick="document.querySelector('[name=css_template]').value = <?php echo esc_js(wp_json_encode(self::get_default_css())); ?>">
+                        <button type="button" id="reset-css-template" class="button">
                             <?php esc_html_e('Reset to Default', 're-access'); ?>
                         </button>
                     </p>
