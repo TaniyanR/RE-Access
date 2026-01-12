@@ -223,7 +223,7 @@ class RE_Access_Ranking {
             'head_bg' => '#333333',
             'text' => '#ffffff',
             'html_template' => '<div class="ranking-list">[ranking_items]</div>',
-            'css_template' => '.re-access-ranking .ranking-list { } .re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }'
+            'css_template' => '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }'
         ];
         
         $saved = $wpdb->get_row($wpdb->prepare("SELECT setting_value FROM $table WHERE setting_key = %s", 'ranking_settings'));
@@ -251,8 +251,8 @@ class RE_Access_Ranking {
             'accent' => sanitize_hex_color($_POST['accent']),
             'head_bg' => sanitize_hex_color($_POST['head_bg']),
             'text' => sanitize_hex_color($_POST['text']),
-            'html_template' => wp_kses_post($_POST['html_template']),
-            'css_template' => sanitize_textarea_field($_POST['css_template']),
+            'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
+            'css_template' => isset($_POST['css_template']) ? sanitize_textarea_field($_POST['css_template']) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
         
         $wpdb->query($wpdb->prepare(
