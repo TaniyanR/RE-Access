@@ -34,21 +34,25 @@
 ### 5. Reverse Access Ranking (admin/class-re-access-ranking.php)
 - **Configurable display**: Period, limit, IN/OUT visibility
 - **Customizable styling**: Colors, width, table design
-- **Shortcode**: `[reaccess_ranking]` with parameters
+- **Shortcode**: `[reaccess_ranking]` (uses default settings from admin)
 - **Live preview**: Real-time preview in admin
 
 ### 6. Link Slots (admin/class-re-access-link-slots.php)
 - **10 configurable slots**: HTML/CSS template editors
+- **Site assignment**: Assign a default site to each slot
 - **Variable replacement**: [rr_site_name], [rr_site_url], [rr_site_desc]
 - **Preview mode**: Shows how templates render
-- **Shortcode**: `[reaccess_link_slot slot="1" site_id="X"]`
+- **Shortcode**: `[reaccess_link_slot slot="1"]` or `[reaccess_link_slot slot="1" site_id="X"]`
+- **Optional site_id**: Uses assigned site if site_id not provided
 
 ### 7. RSS Slots (admin/class-re-access-rss-slots.php)
 - **10 configurable slots**: HTML/CSS template editors
+- **Site assignment**: Assign a default site to each slot
 - **Feed parsing**: WordPress SimplePie integration
 - **Image extraction**: DOMDocument-based (secure)
 - **Variable replacement**: [rr_item_image], [rr_site_name], [rr_item_title], [rr_item_url], [rr_item_date]
-- **Shortcode**: `[reaccess_rss_slot slot="1" site_id="X"]`
+- **Shortcode**: `[reaccess_rss_slot slot="1"]` or `[reaccess_rss_slot slot="1" site_id="X"]`
+- **Optional site_id**: Uses assigned site if site_id not provided
 - **Fallback handling**: Text-only display when no image
 
 ### 8. Notice System (includes/class-re-access-notices.php)
@@ -105,12 +109,20 @@
 ## 📋 Available Shortcodes
 
 ```
-[reaccess_ranking period="7" limit="10" show_in="1" show_out="1"]
+[reaccess_ranking]
+[reaccess_link_slot slot="1"]
 [reaccess_link_slot slot="1" site_id="123"]
+[reaccess_rss_slot slot="1"]
 [reaccess_rss_slot slot="1" site_id="123"]
 [reaccess_notice limit="10"]
 [reaccess_notice_latest]
 ```
+
+**Notes:**
+- `reaccess_ranking` uses only the default settings configured in admin (no parameters)
+- `reaccess_link_slot` and `reaccess_rss_slot` now support optional site_id parameter
+  - If site_id is not provided, uses the site assigned to the slot in admin settings
+  - If site_id is provided, overrides the assigned site for that specific usage
 
 ## 🎯 Admin Menu Structure
 
