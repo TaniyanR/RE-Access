@@ -131,6 +131,10 @@ class RE_Access_Frontend_Registration {
     border-radius: 3px;
     color: #2e7d32;
 }
+
+.reaccess-form-hidden {
+    display: none !important;
+}
 ';
     }
     
@@ -278,7 +282,7 @@ class RE_Access_Frontend_Registration {
         $site_name = sanitize_text_field($_POST['site_name']);
         $site_url = esc_url_raw($_POST['site_url']);
         $rss_url = !empty($_POST['rss_url']) ? esc_url_raw($_POST['rss_url']) : '';
-        $description = sanitize_textarea_field($_POST['description'] ?? '');
+        $description = isset($_POST['description']) ? sanitize_textarea_field($_POST['description']) : '';
         
         // Validate URLs
         if (!filter_var($site_url, FILTER_VALIDATE_URL)) {

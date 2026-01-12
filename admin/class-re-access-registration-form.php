@@ -333,6 +333,10 @@ class RE_Access_Registration_Form {
     border-radius: 3px;
     color: #2e7d32;
 }
+
+.reaccess-form-hidden {
+    display: none !important;
+}
 ';
     }
 }
