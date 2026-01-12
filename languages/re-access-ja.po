@@ -1,0 +1,293 @@
+# Japanese translation for RE:Access WordPress Plugin
+# Copyright (C) 2024 TaniyanR
+# This file is distributed under the same license as the RE:Access package.
+msgid ""
+msgstr ""
+"Project-Id-Version: RE:Access 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/TaniyanR/RE-Access\n"
+"POT-Creation-Date: 2024-01-12 11:30+0000\n"
+"PO-Revision-Date: 2024-01-12 11:30+0000\n"
+"Last-Translator: TaniyanR\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Manual\n"
+"X-Poedit-KeywordsList: __;_e;_x;esc_html__;esc_html_e;esc_attr__;esc_attr_e\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-SearchPath-0: .\n"
+
+msgid "RE:Access"
+msgstr "RE:Access"
+
+msgid "RE:Access Dashboard"
+msgstr "RE:Access ダッシュボード"
+
+msgid "Site Registration"
+msgstr "サイト登録"
+
+msgid "Sites"
+msgstr "サイト"
+
+msgid "Reverse Access Ranking"
+msgstr "逆アクセスランキング"
+
+msgid "Ranking"
+msgstr "ランキング"
+
+msgid "Link Slots"
+msgstr "リンクスロット"
+
+msgid "RSS Slots"
+msgstr "RSSスロット"
+
+msgid "Welcome to RE:Access version"
+msgstr "RE:Access バージョンへようこそ"
+
+msgid "1 Day"
+msgstr "1日"
+
+msgid "1 Week"
+msgstr "1週間"
+
+msgid "1 Month"
+msgstr "1ヶ月"
+
+msgid "Total IN"
+msgstr "総流入"
+
+msgid "Unique Users"
+msgstr "ユニークユーザー"
+
+msgid "Page Views"
+msgstr "ページビュー"
+
+msgid "Total OUT"
+msgstr "総流出"
+
+msgid "Access Trend"
+msgstr "アクセス推移"
+
+msgid "Daily Details"
+msgstr "日別詳細"
+
+msgid "Date"
+msgstr "日付"
+
+msgid "IN"
+msgstr "流入"
+
+msgid "OUT"
+msgstr "流出"
+
+msgid "PV"
+msgstr "PV"
+
+msgid "UU"
+msgstr "UU"
+
+msgid "No data available"
+msgstr "データがありません"
+
+msgid "Site added successfully and is pending approval."
+msgstr "サイトが正常に追加され、承認待ちです。"
+
+msgid "Site approved successfully."
+msgstr "サイトが正常に承認されました。"
+
+msgid "Site deleted successfully."
+msgstr "サイトが正常に削除されました。"
+
+msgid "Site updated successfully."
+msgstr "サイトが正常に更新されました。"
+
+msgid "Edit Site"
+msgstr "サイトを編集"
+
+msgid "Site Name"
+msgstr "サイト名"
+
+msgid "Site URL"
+msgstr "サイトURL"
+
+msgid "RSS URL"
+msgstr "RSS URL"
+
+msgid "Description"
+msgstr "説明"
+
+msgid "Update Site"
+msgstr "サイトを更新"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Add New Site"
+msgstr "新規サイトを追加"
+
+msgid "Add Site"
+msgstr "サイトを追加"
+
+msgid "Approved (%d)"
+msgstr "承認済み (%d)"
+
+msgid "Pending (%d)"
+msgstr "承認待ち (%d)"
+
+msgid "&laquo; Previous"
+msgstr "&laquo; 前へ"
+
+msgid "Next &raquo;"
+msgstr "次へ &raquo;"
+
+msgid "Registered Sites"
+msgstr "登録サイト"
+
+msgid "URL"
+msgstr "URL"
+
+msgid "Status"
+msgstr "ステータス"
+
+msgid "Created"
+msgstr "作成日時"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Pending"
+msgstr "承認待ち"
+
+msgid "Approved"
+msgstr "承認済み"
+
+msgid "Edit"
+msgstr "編集"
+
+msgid "Approve"
+msgstr "承認"
+
+msgid "Are you sure?"
+msgstr "本当によろしいですか？"
+
+msgid "Delete"
+msgstr "削除"
+
+msgid "No sites registered yet"
+msgstr "まだサイトが登録されていません"
+
+msgid "New site registered: %s"
+msgstr "新しいサイトが登録されました: %s"
+
+msgid "Site approved: %s"
+msgstr "サイトが承認されました: %s"
+
+msgid "Site deleted: %s"
+msgstr "サイトが削除されました: %s"
+
+msgid "Ranking Settings"
+msgstr "ランキング設定"
+
+msgid "Default Period"
+msgstr "デフォルト期間"
+
+msgid "Display Limit"
+msgstr "表示件数"
+
+msgid "Show IN"
+msgstr "流入を表示"
+
+msgid "Show OUT"
+msgstr "流出を表示"
+
+msgid "Table Width"
+msgstr "テーブル幅"
+
+msgid "Accent Color"
+msgstr "アクセントカラー"
+
+msgid "Header Background"
+msgstr "ヘッダー背景"
+
+msgid "Text Color"
+msgstr "テキストカラー"
+
+msgid "Save Settings"
+msgstr "設定を保存"
+
+msgid "Shortcode"
+msgstr "ショートコード"
+
+msgid "Optional parameters:"
+msgstr "オプションパラメータ："
+
+msgid "Preview"
+msgstr "プレビュー"
+
+msgid "Rank"
+msgstr "順位"
+
+msgid "Site"
+msgstr "サイト"
+
+msgid "Slot %d"
+msgstr "スロット %d"
+
+msgid "Configure Slot %d"
+msgstr "スロット %d を設定"
+
+msgid "Available variables:"
+msgstr "利用可能な変数："
+
+msgid "HTML Template"
+msgstr "HTMLテンプレート"
+
+msgid "CSS Template"
+msgstr "CSSテンプレート"
+
+msgid "Save Slot"
+msgstr "スロットを保存"
+
+msgid "Site ID is required"
+msgstr "サイトIDが必要です"
+
+msgid "Site not found"
+msgstr "サイトが見つかりません"
+
+msgid "Important Note:"
+msgstr "重要な注意事項："
+
+msgid "RSS feeds are fetched from external sites. Heavy usage may impact your site performance. The plugin uses caching to minimize load, but please monitor your site's performance when using multiple RSS slots."
+msgstr "RSSフィードは外部サイトから取得されます。過度の使用はサイトのパフォーマンスに影響を与える可能性があります。プラグインはキャッシュを使用して負荷を最小限に抑えますが、複数のRSSスロットを使用する場合はサイトのパフォーマンスを監視してください。"
+
+msgid "Cached RSS feeds are automatically refreshed based on the cache duration setting."
+msgstr "キャッシュされたRSSフィードは、キャッシュ期間設定に基づいて自動的に更新されます。"
+
+msgid "Items to Display"
+msgstr "表示件数"
+
+msgid "Cache Duration (minutes)"
+msgstr "キャッシュ期間（分）"
+
+msgid "How long to cache RSS feed data (10-1440 minutes). Default: 30 minutes."
+msgstr "RSSフィードデータをキャッシュする期間（10〜1440分）。デフォルト：30分。"
+
+msgid "Note: If RSS item has no image, [rr_item_image] will be removed and only text link is shown."
+msgstr "注意：RSS項目に画像がない場合、[rr_item_image]は削除され、テキストリンクのみが表示されます。"
+
+msgid "RSS feed not available"
+msgstr "RSSフィードが利用できません"
+
+msgid "No RSS items available"
+msgstr "RSS項目がありません"
+
+msgid "No notices available"
+msgstr "お知らせはありません"
+
+msgid "Invalid redirect URL"
+msgstr "無効なリダイレクトURLです"
+
+msgid "Invalid URL"
+msgstr "無効なURLです"

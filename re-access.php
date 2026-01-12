@@ -76,6 +76,14 @@ function re_access_activate() {
 register_activation_hook(__FILE__, 're_access_activate');
 
 /**
+ * Load plugin text domain for translations
+ */
+function re_access_load_textdomain() {
+    load_plugin_textdomain('re-access', false, dirname(plugin_basename(__FILE__)) . '/languages');
+}
+add_action('plugins_loaded', 're_access_load_textdomain');
+
+/**
  * Initialize plugin
  */
 function re_access_init() {

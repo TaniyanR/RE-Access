@@ -8,21 +8,6 @@ class ComposerStaticInit9e9fae73ad2ef8a0ec7aa95c6524c52b
 {
     public static $files = array (
         'f6d4f6bcee7247df6b777884c3e22f98' => __DIR__ . '/..' . '/yahnis-elsts/plugin-update-checker/load-v5p6.php',
-        'c8c2beec7579eeecf1f70f3550607a84' => __DIR__ . '/../..' . '/re-access.php',
-    );
-
-    public static $prefixLengthsPsr4 = array (
-        'R' =>
-        array (
-            'ReAccess\\' => 9,
-        ),
-    );
-
-    public static $prefixDirsPsr4 = array (
-        'ReAccess\\' =>
-        array (
-            0 => __DIR__ . '/../..' . '/src',
-        ),
     );
 
     public static $classMap = array (
@@ -32,8 +17,6 @@ class ComposerStaticInit9e9fae73ad2ef8a0ec7aa95c6524c52b
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit9e9fae73ad2ef8a0ec7aa95c6524c52b::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit9e9fae73ad2ef8a0ec7aa95c6524c52b::$prefixDirsPsr4;
             $loader->classMap = ComposerStaticInit9e9fae73ad2ef8a0ec7aa95c6524c52b::$classMap;
 
         }, null, ClassLoader::class);
