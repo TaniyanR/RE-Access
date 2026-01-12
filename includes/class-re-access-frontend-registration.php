@@ -24,7 +24,7 @@ class RE_Access_Frontend_Registration {
     public static function enqueue_styles() {
         // Only enqueue if shortcode is present on the page
         global $post;
-        if (is_a($post, 'WP_Post') && $post && has_shortcode($post->post_content, 'reaccess_register')) {
+        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'reaccess_register')) {
             wp_add_inline_style('wp-block-library', self::get_custom_css());
         }
     }
@@ -289,7 +289,8 @@ class RE_Access_Frontend_Registration {
             return new WP_Error('invalid_rss', __('Please enter a valid RSS URL.', 're-access'));
         }
         
-        // Normalize URLs for consistency
+        // Normalize URLs for consistency (remove trailing slashes for comparison)
+        // This ensures URLs like "https://example.com" and "https://example.com/" are treated as the same
         $site_url = untrailingslashit($site_url);
         $rss_url = !empty($rss_url) ? untrailingslashit($rss_url) : '';
         

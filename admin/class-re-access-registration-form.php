@@ -155,14 +155,14 @@ class RE_Access_Registration_Form {
         global $wpdb;
         $settings_table = $wpdb->prefix . 'reaccess_settings';
         
-        // Sanitize templates - allow basic HTML but restrict dangerous tags
+        // Sanitize templates - allow basic HTML but restrict dangerous tags and attributes
         $allowed_html = [
-            'div' => ['class' => [], 'id' => [], 'style' => []],
+            'div' => ['class' => [], 'id' => []],
             'h1' => ['class' => [], 'id' => []],
             'h2' => ['class' => [], 'id' => []],
             'h3' => ['class' => [], 'id' => []],
             'p' => ['class' => [], 'id' => []],
-            'span' => ['class' => [], 'id' => [], 'style' => []],
+            'span' => ['class' => [], 'id' => []],
             'label' => ['for' => [], 'class' => [], 'id' => []],
             'small' => ['class' => [], 'id' => []],
             'form' => ['method' => [], 'action' => [], 'class' => [], 'id' => []],
