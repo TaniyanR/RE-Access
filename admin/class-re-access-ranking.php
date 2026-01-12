@@ -86,17 +86,7 @@ class RE_Access_Ranking {
                 
                 <h3><?php esc_html_e('Shortcode', 're-access'); ?></h3>
                 <code>[reaccess_ranking]</code>
-                <p><?php esc_html_e('Optional parameters:', 're-access'); ?></p>
-                <ul>
-                    <li><code>period</code> - 1, 7, or 30</li>
-                    <li><code>limit</code> - Number of sites to show</li>
-                    <li><code>show_in</code> - 1 or 0</li>
-                    <li><code>show_out</code> - 1 or 0</li>
-                    <li><code>width</code> - Table width (e.g., "100%")</li>
-                    <li><code>accent</code> - Accent color (hex)</li>
-                    <li><code>head_bg</code> - Header background (hex)</li>
-                    <li><code>text</code> - Text color (hex)</li>
-                </ul>
+                <p><?php esc_html_e('The shortcode uses the default settings configured above.', 're-access'); ?></p>
             </div>
             
             <!-- Preview -->
@@ -262,20 +252,9 @@ class RE_Access_Ranking {
     public static function shortcode_ranking($atts) {
         $settings = self::get_settings();
         
-        $atts = shortcode_atts([
-            'period' => $settings['period'],
-            'limit' => $settings['limit'],
-            'show_in' => $settings['show_in'],
-            'show_out' => $settings['show_out'],
-            'width' => $settings['width'],
-            'accent' => $settings['accent'],
-            'head_bg' => $settings['head_bg'],
-            'text' => $settings['text']
-        ], $atts);
+        $ranking = self::get_ranking_data($settings['period'], $settings['limit']);
+        $output = self::render_ranking_table($ranking, $settings);
         
-        $ranking = self::get_ranking_data($atts['period'], $atts['limit']);
-        $output = self::render_ranking_table($ranking, $atts);
-        
-        return apply_filters('re_access_ranking_output', $output, $atts, $ranking);
+        return apply_filters('re_access_ranking_output', $output, $settings, $ranking);
     }
 }
