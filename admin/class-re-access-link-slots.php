@@ -55,6 +55,27 @@ class RE_Access_Link_Slots {
                             <td><input type="text" name="description" value="<?php echo esc_attr($slot_data['description']); ?>" class="large-text"></td>
                         </tr>
                         <tr>
+                            <th><?php esc_html_e('Assigned Site', 're-access'); ?></th>
+                            <td>
+                                <select name="site_id">
+                                    <option value="0"><?php esc_html_e('No site assigned', 're-access'); ?></option>
+                                    <?php
+                                    global $wpdb;
+                                    $sites_table = $wpdb->prefix . 'reaccess_sites';
+                                    $sites = $wpdb->get_results($wpdb->prepare(
+                                        "SELECT id, site_name FROM $sites_table WHERE status = %s ORDER BY site_name ASC",
+                                        'approved'
+                                    ));
+                                    foreach ($sites as $site) {
+                                        $selected = ($site->id == $slot_data['site_id']) ? 'selected' : '';
+                                        echo '<option value="' . esc_attr($site->id) . '" ' . $selected . '>' . esc_html($site->site_name) . '</option>';
+                                    }
+                                    ?>
+                                </select>
+                                <p class="description"><?php esc_html_e('Select a site to use as default for this slot when site_id is not provided in the shortcode.', 're-access'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th><?php esc_html_e('HTML Template', 're-access'); ?></th>
                             <td>
                                 <textarea name="html_template" rows="10" class="large-text code"><?php echo esc_textarea($slot_data['html_template']); ?></textarea>
@@ -78,7 +99,8 @@ class RE_Access_Link_Slots {
                 </form>
                 
                 <h3><?php esc_html_e('Shortcode', 're-access'); ?></h3>
-                <code>[reaccess_link_slot slot="<?php echo $current_slot; ?>" site_id="X"]</code>
+                <code>[reaccess_link_slot slot="<?php echo $current_slot; ?>"]</code>
+                <p class="description"><?php esc_html_e('Use site_id parameter to override the assigned site:', 're-access'); ?> <code>[reaccess_link_slot slot="<?php echo $current_slot; ?>" site_id="X"]</code></p>
             </div>
             
             <!-- Preview -->
@@ -99,6 +121,7 @@ class RE_Access_Link_Slots {
         
         $defaults = [
             'description' => '',
+            'site_id' => 0,
             'html_template' => '<div class="re-link-slot">
     <h3><a href="[rr_site_url]" target="_blank">[rr_site_name]</a></h3>
     <p>[rr_site_desc]</p>
@@ -147,6 +170,7 @@ class RE_Access_Link_Slots {
         
         $data = [
             'description' => sanitize_text_field($_POST['description']),
+            'site_id' => (int)$_POST['site_id'],
             'html_template' => wp_kses_post($_POST['html_template']),
             'css_template' => sanitize_textarea_field($_POST['css_template'])
         ];
@@ -191,8 +215,16 @@ class RE_Access_Link_Slots {
         $slot = max(1, min(10, (int)$atts['slot']));
         $site_id = (int)$atts['site_id'];
         
+        // Get slot template
+        $slot_data = self::get_slot_data($slot);
+        
+        // If no site_id provided, use the assigned site from slot settings
+        if (!$site_id && !empty($slot_data['site_id'])) {
+            $site_id = (int)$slot_data['site_id'];
+        }
+        
         if (!$site_id) {
-            return '<p>' . esc_html__('Site ID is required', 're-access') . '</p>';
+            return '<p>' . esc_html__('Site ID is required or must be assigned to the slot', 're-access') . '</p>';
         }
         
         // Get site data
@@ -206,9 +238,6 @@ class RE_Access_Link_Slots {
         if (!$site) {
             return '<p>' . esc_html__('Site not found', 're-access') . '</p>';
         }
-        
-        // Get slot template
-        $slot_data = self::get_slot_data($slot);
         
         $html = $slot_data['html_template'];
         $css = $slot_data['css_template'];
