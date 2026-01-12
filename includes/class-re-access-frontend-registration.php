@@ -225,8 +225,9 @@ class RE_Access_Frontend_Registration {
             $success_html = '<div class="reaccess-success-message">' . esc_html($success_message) . '</div>';
             $html = str_replace('[success_message]', $success_html, $html);
             
-            // Hide form on success by removing form fields
-            $html = preg_replace('/<form[^>]*>.*?<\/form>/s', '', $html);
+            // Hide form on success by wrapping it in a hidden div
+            $html = preg_replace('/<form([^>]*)>/', '<div style="display:none;"><form$1>', $html);
+            $html = str_replace('</form>', '</form></div>', $html);
         } else {
             $html = str_replace('[success_message]', '', $html);
         }
@@ -289,8 +290,9 @@ class RE_Access_Frontend_Registration {
             return new WP_Error('invalid_rss', __('Please enter a valid RSS URL.', 're-access'));
         }
         
-        // Normalize URLs for duplicate check
-        $normalized_url = RE_Access_Database::normalize_url($site_url);
+        // Normalize URLs for consistency
+        $site_url = untrailingslashit($site_url);
+        $rss_url = untrailingslashit($rss_url);
         
         // Check for duplicates
         $sites_table = $wpdb->prefix . 'reaccess_sites';
@@ -302,10 +304,6 @@ class RE_Access_Frontend_Registration {
         if ($existing > 0) {
             return new WP_Error('duplicate_site', __('This site has already been registered.', 're-access'));
         }
-        
-        // Normalize URLs before saving
-        $site_url = untrailingslashit($site_url);
-        $rss_url = untrailingslashit($rss_url);
         
         // Insert into database
         $result = $wpdb->insert($sites_table, [

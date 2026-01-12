@@ -128,7 +128,26 @@ class RE_Access_Registration_Form {
         global $wpdb;
         $settings_table = $wpdb->prefix . 'reaccess_settings';
         
-        $html_template = wp_kses_post($_POST['html_template']);
+        // Sanitize templates - allow basic HTML but restrict dangerous tags
+        $allowed_html = [
+            'div' => ['class' => [], 'id' => [], 'style' => []],
+            'h1' => ['class' => [], 'id' => []],
+            'h2' => ['class' => [], 'id' => []],
+            'h3' => ['class' => [], 'id' => []],
+            'p' => ['class' => [], 'id' => []],
+            'span' => ['class' => [], 'id' => [], 'style' => []],
+            'label' => ['for' => [], 'class' => [], 'id' => []],
+            'small' => ['class' => [], 'id' => []],
+            'form' => ['method' => [], 'action' => [], 'class' => [], 'id' => []],
+            'input' => ['type' => [], 'name' => [], 'id' => [], 'class' => [], 'value' => [], 'required' => []],
+            'textarea' => ['name' => [], 'id' => [], 'class' => [], 'rows' => []],
+            'button' => ['type' => [], 'name' => [], 'class' => [], 'id' => []],
+            'br' => [],
+            'strong' => [],
+            'em' => [],
+        ];
+        
+        $html_template = wp_kses($_POST['html_template'], $allowed_html);
         $css_template = sanitize_textarea_field($_POST['css_template']);
         
         // Save or update HTML template
