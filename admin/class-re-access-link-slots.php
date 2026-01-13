@@ -22,7 +22,7 @@ class RE_Access_Link_Slots {
         }
         
         $current_slot = isset($_GET['slot']) ? (int)$_GET['slot'] : 1;
-        $current_slot = max(1, min(10, $current_slot));
+        $current_slot = max(1, min(5, $current_slot));
         
         $slot_data = self::get_slot_data($current_slot);
         
@@ -32,7 +32,7 @@ class RE_Access_Link_Slots {
             
             <!-- Slot Tabs -->
             <div class="nav-tab-wrapper" style="margin: 20px 0;">
-                <?php for ($i = 1; $i <= 10; $i++): ?>
+                <?php for ($i = 1; $i <= 5; $i++): ?>
                     <a href="?page=re-access-link-slots&slot=<?php echo $i; ?>" 
                        class="nav-tab <?php echo $current_slot == $i ? 'nav-tab-active' : ''; ?>">
                         <?php printf(esc_html__('Slot %d', 're-access'), $i); ?>
@@ -212,31 +212,34 @@ class RE_Access_Link_Slots {
             'site_id' => 0
         ], $atts);
         
-        $slot = max(1, min(10, (int)$atts['slot']));
+        $slot = max(1, min(5, (int)$atts['slot']));
         $site_id = (int)$atts['site_id'];
         
         // Get slot template
         $slot_data = self::get_slot_data($slot);
         
-        // If no site_id provided, use the assigned site from slot settings
-        if (!$site_id && !empty($slot_data['site_id'])) {
-            $site_id = (int)$slot_data['site_id'];
-        }
-        
-        if (!$site_id) {
-            return '<p>' . esc_html__('Site ID is required or must be assigned to the slot', 're-access') . '</p>';
-        }
-        
-        // Get site data
         global $wpdb;
         $sites_table = $wpdb->prefix . 'reaccess_sites';
-        $site = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $sites_table WHERE id = %d AND status = 'approved'",
-            $site_id
-        ));
+        
+        // If site_id is provided explicitly, use it (backward compatibility)
+        if ($site_id > 0) {
+            $site = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE id = %d AND status = 'approved'",
+                $site_id
+            ));
+        } else {
+            // Filter by link_slot column - get sites assigned to this slot
+            $sites = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE link_slot = %d AND status = 'approved' ORDER BY id ASC",
+                $slot
+            ));
+            
+            // Use the first site found for this slot
+            $site = !empty($sites) ? $sites[0] : null;
+        }
         
         if (!$site) {
-            return '<p>' . esc_html__('Site not found', 're-access') . '</p>';
+            return '';  // Return empty string if no site is assigned to this slot
         }
         
         $html = $slot_data['html_template'];

@@ -127,6 +127,20 @@ class RE_Access_Sites {
                                 <th><?php esc_html_e('Description', 're-access'); ?></th>
                                 <td><textarea name="site_desc" class="large-text" rows="3"><?php echo esc_textarea($edit_site->site_desc); ?></textarea></td>
                             </tr>
+                            <tr>
+                                <th><?php esc_html_e('Link Slot', 're-access'); ?></th>
+                                <td>
+                                    <select name="link_slot">
+                                        <option value="" <?php selected($edit_site->link_slot, null); ?>><?php esc_html_e('None', 're-access'); ?></option>
+                                        <option value="1" <?php selected($edit_site->link_slot, 1); ?>><?php esc_html_e('Slot 1', 're-access'); ?></option>
+                                        <option value="2" <?php selected($edit_site->link_slot, 2); ?>><?php esc_html_e('Slot 2', 're-access'); ?></option>
+                                        <option value="3" <?php selected($edit_site->link_slot, 3); ?>><?php esc_html_e('Slot 3', 're-access'); ?></option>
+                                        <option value="4" <?php selected($edit_site->link_slot, 4); ?>><?php esc_html_e('Slot 4', 're-access'); ?></option>
+                                        <option value="5" <?php selected($edit_site->link_slot, 5); ?>><?php esc_html_e('Slot 5', 're-access'); ?></option>
+                                    </select>
+                                    <p class="description"><?php esc_html_e('Assign this site to a link slot for display via shortcode.', 're-access'); ?></p>
+                                </td>
+                            </tr>
                         </table>
                         
                         <p class="submit">
@@ -159,6 +173,20 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('Description', 're-access'); ?></th>
                                 <td><textarea name="site_desc" class="large-text" rows="3"></textarea></td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Link Slot', 're-access'); ?></th>
+                                <td>
+                                    <select name="link_slot">
+                                        <option value=""><?php esc_html_e('None', 're-access'); ?></option>
+                                        <option value="1"><?php esc_html_e('Slot 1', 're-access'); ?></option>
+                                        <option value="2"><?php esc_html_e('Slot 2', 're-access'); ?></option>
+                                        <option value="3"><?php esc_html_e('Slot 3', 're-access'); ?></option>
+                                        <option value="4"><?php esc_html_e('Slot 4', 're-access'); ?></option>
+                                        <option value="5"><?php esc_html_e('Slot 5', 're-access'); ?></option>
+                                    </select>
+                                    <p class="description"><?php esc_html_e('Assign this site to a link slot for display via shortcode.', 're-access'); ?></p>
+                                </td>
                             </tr>
                         </table>
                         
@@ -212,6 +240,7 @@ class RE_Access_Sites {
                                 <th><?php esc_html_e('Site Name', 're-access'); ?></th>
                                 <th><?php esc_html_e('URL', 're-access'); ?></th>
                                 <th><?php esc_html_e('Status', 're-access'); ?></th>
+                                <th><?php esc_html_e('Link Slot', 're-access'); ?></th>
                                 <th><?php esc_html_e('Created', 're-access'); ?></th>
                                 <th><?php esc_html_e('Actions', 're-access'); ?></th>
                             </tr>
@@ -230,6 +259,15 @@ class RE_Access_Sites {
                                             <?php else: ?>
                                                 <span style="color: green;">✓ <?php esc_html_e('Approved', 're-access'); ?></span>
                                             <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php 
+                                            if (!empty($site->link_slot)) {
+                                                printf(esc_html__('Slot %d', 're-access'), $site->link_slot);
+                                            } else {
+                                                echo '—';
+                                            }
+                                            ?>
                                         </td>
                                         <td><?php echo esc_html($site->created_at); ?></td>
                                         <td>
@@ -265,7 +303,7 @@ class RE_Access_Sites {
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="5"><?php esc_html_e('No sites registered yet', 're-access'); ?></td>
+                                    <td colspan="6"><?php esc_html_e('No sites registered yet', 're-access'); ?></td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -292,12 +330,23 @@ class RE_Access_Sites {
         $site_url = self::normalize_url($_POST['site_url']);
         $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
         
+        // Process link_slot value
+        $link_slot = null;
+        if (isset($_POST['link_slot']) && $_POST['link_slot'] !== '') {
+            $link_slot = (int)$_POST['link_slot'];
+            // Validate link_slot is between 1 and 5
+            if ($link_slot < 1 || $link_slot > 5) {
+                $link_slot = null;
+            }
+        }
+        
         $wpdb->insert($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
             'site_url' => $site_url,
             'site_rss' => $site_rss,
             'site_desc' => sanitize_textarea_field($_POST['site_desc'] ?? ''),
-            'status' => 'pending'
+            'status' => 'pending',
+            'link_slot' => $link_slot
         ]);
         
         // Create notice
@@ -432,11 +481,22 @@ class RE_Access_Sites {
         $site_url = self::normalize_url($_POST['site_url']);
         $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
         
+        // Process link_slot value
+        $link_slot = null;
+        if (isset($_POST['link_slot']) && $_POST['link_slot'] !== '') {
+            $link_slot = (int)$_POST['link_slot'];
+            // Validate link_slot is between 1 and 5
+            if ($link_slot < 1 || $link_slot > 5) {
+                $link_slot = null;
+            }
+        }
+        
         $wpdb->update($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
             'site_url' => $site_url,
             'site_rss' => $site_rss,
             'site_desc' => sanitize_textarea_field($_POST['site_desc'] ?? ''),
+            'link_slot' => $link_slot
         ], ['id' => $site_id]);
         
         // Clear approved sites cache
