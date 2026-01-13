@@ -29,6 +29,7 @@ class RE_Access_Sites {
     public static function init() {
         add_action('admin_post_re_access_add_site', [__CLASS__, 'handle_add_site']);
         add_action('admin_post_re_access_approve_site', [__CLASS__, 'handle_approve_site']);
+        add_action('admin_post_re_access_reject_site', [__CLASS__, 'handle_reject_site']);
         add_action('admin_post_re_access_delete_site', [__CLASS__, 'handle_delete_site']);
         add_action('admin_post_re_access_update_site', [__CLASS__, 'handle_update_site']);
     }
@@ -39,9 +40,9 @@ class RE_Access_Sites {
     public static function render() {
         global $wpdb;
         
-        // Get current status tab (approved or pending)
+        // Get current status tab (approved, pending, or rejected)
         $current_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : 'approved';
-        if (!in_array($current_status, ['approved', 'pending'], true)) {
+        if (!in_array($current_status, ['approved', 'pending', 'rejected'], true)) {
             $current_status = 'approved';
         }
         
@@ -68,6 +69,7 @@ class RE_Access_Sites {
         // Get counts for tabs
         $approved_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'approved'));
         $pending_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'pending'));
+        $rejected_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'rejected'));
         
         // Handle edit mode
         $edit_site = null;
@@ -89,6 +91,7 @@ class RE_Access_Sites {
                 $messages = [
                     'added' => __('Site added successfully and is pending approval.', 're-access'),
                     'approved' => __('Site approved successfully.', 're-access'),
+                    'rejected' => __('Site rejected successfully.', 're-access'),
                     'deleted' => __('Site deleted successfully.', 're-access'),
                     'updated' => __('Site updated successfully.', 're-access'),
                 ];
@@ -175,6 +178,10 @@ class RE_Access_Sites {
                        class="nav-tab <?php echo $current_status === 'pending' ? 'nav-tab-active' : ''; ?>">
                         <?php printf(esc_html__('Pending (%d)', 're-access'), $pending_count); ?>
                     </a>
+                    <a href="?page=re-access-sites&status=rejected" 
+                       class="nav-tab <?php echo $current_status === 'rejected' ? 'nav-tab-active' : ''; ?>">
+                        <?php printf(esc_html__('Rejected (%d)', 're-access'), $rejected_count); ?>
+                    </a>
                 </div>
                 
                 <!-- Pagination -->
@@ -218,6 +225,8 @@ class RE_Access_Sites {
                                         <td>
                                             <?php if ($site->status === 'pending'): ?>
                                                 <span style="color: orange;">⏳ <?php esc_html_e('Pending', 're-access'); ?></span>
+                                            <?php elseif ($site->status === 'rejected'): ?>
+                                                <span style="color: red;">✗ <?php esc_html_e('Rejected', 're-access'); ?></span>
                                             <?php else: ?>
                                                 <span style="color: green;">✓ <?php esc_html_e('Approved', 're-access'); ?></span>
                                             <?php endif; ?>
@@ -234,6 +243,13 @@ class RE_Access_Sites {
                                                     <input type="hidden" name="site_id" value="<?php echo esc_attr($site->id); ?>">
                                                     <?php wp_nonce_field('re_access_approve_site'); ?>
                                                     <input type="submit" class="button button-small" value="<?php esc_attr_e('Approve', 're-access'); ?>">
+                                                </form>
+                                                
+                                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display: inline;">
+                                                    <input type="hidden" name="action" value="re_access_reject_site">
+                                                    <input type="hidden" name="site_id" value="<?php echo esc_attr($site->id); ?>">
+                                                    <?php wp_nonce_field('re_access_reject_site'); ?>
+                                                    <input type="submit" class="button button-small" value="<?php esc_attr_e('Reject', 're-access'); ?>">
                                                 </form>
                                             <?php endif; ?>
                                             
@@ -322,6 +338,44 @@ class RE_Access_Sites {
         ), $site_id);
         
         wp_redirect(admin_url('admin.php?page=re-access-sites&status=approved&message=approved'));
+        exit;
+    }
+    
+    /**
+     * Handle reject site
+     */
+    public static function handle_reject_site() {
+        check_admin_referer('re_access_reject_site');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+        
+        global $wpdb;
+        $table = $wpdb->prefix . 'reaccess_sites';
+        $site_id = (int)$_POST['site_id'];
+        
+        $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
+        
+        if (!$site) {
+            wp_die(__('Site not found.', 're-access'));
+        }
+        
+        $result = $wpdb->update($table, ['status' => 'rejected'], ['id' => $site_id]);
+        
+        if ($result === false) {
+            wp_die(__('Database error: Failed to reject site.', 're-access'));
+        }
+        
+        // Create notice
+        if (class_exists('RE_Access_Notices')) {
+            RE_Access_Notices::add_notice('site_rejected', sprintf(
+                __('Site rejected: %s', 're-access'),
+                $site->site_name
+            ), $site_id);
+        }
+        
+        wp_redirect(admin_url('admin.php?page=re-access-sites&status=rejected&message=rejected'));
         exit;
     }
     
