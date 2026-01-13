@@ -77,6 +77,20 @@ class RE_Access_Ranking {
                             <th><?php esc_html_e('Text Color', 're-access'); ?></th>
                             <td><input type="color" name="text" value="<?php echo esc_attr($settings['text']); ?>"></td>
                         </tr>
+                        <tr>
+                            <th><?php esc_html_e('HTML Template', 're-access'); ?></th>
+                            <td>
+                                <textarea name="html_template" rows="5" style="width: 100%; font-family: monospace;"><?php echo esc_textarea($settings['html_template']); ?></textarea>
+                                <p class="description"><?php esc_html_e('Use [ranking_items] for dynamic content.', 're-access'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><?php esc_html_e('CSS Template', 're-access'); ?></th>
+                            <td>
+                                <textarea name="css_template" rows="5" style="width: 100%; font-family: monospace;"><?php echo esc_textarea($settings['css_template']); ?></textarea>
+                                <p class="description"><?php esc_html_e('Custom CSS styles for the ranking display.', 're-access'); ?></p>
+                            </td>
+                        </tr>
                     </table>
                     
                     <p class="submit">
@@ -207,7 +221,9 @@ class RE_Access_Ranking {
             'width' => '100%',
             'accent' => '#0073aa',
             'head_bg' => '#333333',
-            'text' => '#ffffff'
+            'text' => '#ffffff',
+            'html_template' => '<div class="ranking-list">[ranking_items]</div>',
+            'css_template' => '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }'
         ];
         
         $saved = $wpdb->get_row($wpdb->prepare("SELECT setting_value FROM $table WHERE setting_key = %s", 'ranking_settings'));
@@ -235,6 +251,8 @@ class RE_Access_Ranking {
             'accent' => sanitize_hex_color($_POST['accent']),
             'head_bg' => sanitize_hex_color($_POST['head_bg']),
             'text' => sanitize_hex_color($_POST['text']),
+            'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
+            'css_template' => isset($_POST['css_template']) ? wp_strip_all_tags(sanitize_textarea_field($_POST['css_template'])) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
         
         $wpdb->query($wpdb->prepare(
@@ -247,13 +265,67 @@ class RE_Access_Ranking {
     }
     
     /**
+     * Render ranking with templates
+     */
+    private static function render_ranking_with_templates($ranking, $settings) {
+        // Generate ranking items HTML
+        $items_html = '';
+        
+        if (!empty($ranking)) {
+            $rank = 1;
+            foreach ($ranking as $site) {
+                // Create individual item HTML with generic wrapper
+                $item = '<div class="re-access-ranking-item" data-rank="' . esc_attr($rank) . '">';
+                $item .= '<span class="rank">' . esc_html($rank) . '</span> ';
+                $item .= '<a href="' . esc_url($site->site_url) . '" target="_blank" style="color: ' . esc_attr($settings['accent']) . ';">';
+                $item .= esc_html($site->site_name);
+                $item .= '</a>';
+                
+                if ($settings['show_in']) {
+                    $item .= ' <span class="in-count">IN: ' . esc_html(number_format($site->total_in)) . '</span>';
+                }
+                if ($settings['show_out']) {
+                    $item .= ' <span class="out-count">OUT: ' . esc_html(number_format($site->total_out)) . '</span>';
+                }
+                
+                $item .= '</div>';
+                $items_html .= $item;
+                $rank++;
+            }
+        } else {
+            $items_html = '<div class="no-data">' . esc_html__('No data available', 're-access') . '</div>';
+        }
+        
+        // Replace [ranking_items] placeholder (only first occurrence for safety)
+        $html = $settings['html_template'];
+        $placeholder_pos = strpos($html, '[ranking_items]');
+        if ($placeholder_pos !== false) {
+            $html = substr_replace($html, $items_html, $placeholder_pos, strlen('[ranking_items]'));
+        } else {
+            // Fallback: if placeholder not found, wrap items in default container
+            $html = '<div class="ranking-list">' . $items_html . '</div>';
+        }
+        
+        // Add CSS (already sanitized and stripped of tags, safe to output directly)
+        $css = '<style>' . $settings['css_template'] . '</style>';
+        
+        // Wrap in a container with class (HTML already sanitized during save)
+        $output = '<div class="re-access-ranking">';
+        $output .= $css;
+        $output .= $html;
+        $output .= '</div>';
+        
+        return $output;
+    }
+    
+    /**
      * Shortcode: [reaccess_ranking]
      */
     public static function shortcode_ranking($atts) {
         $settings = self::get_settings();
         
         $ranking = self::get_ranking_data($settings['period'], $settings['limit']);
-        $output = self::render_ranking_table($ranking, $settings);
+        $output = self::render_ranking_with_templates($ranking, $settings);
         
         return apply_filters('re_access_ranking_output', $output, $settings, $ranking);
     }
