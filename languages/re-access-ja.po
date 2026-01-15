@@ -303,3 +303,57 @@ msgstr "このサイトをショートコードで表示するためのリンク
 
 msgid "Reject"
 msgstr "拒否"
+
+msgid "Registration Form Settings"
+msgstr "登録フォーム設定"
+
+msgid "Customize the HTML and CSS templates for the frontend registration form."
+msgstr "フロントエンド登録フォームのHTMLおよびCSSテンプレートをカスタマイズします。"
+
+msgid "Available Template Variables"
+msgstr "利用可能なテンプレート変数"
+
+msgid "Use these variables in your HTML template:"
+msgstr "これらの変数をHTMLテンプレートで使用してください："
+
+msgid "Site name input field"
+msgstr "サイト名入力フィールド"
+
+msgid "Site URL input field"
+msgstr "サイトURL入力フィールド"
+
+msgid "RSS URL input field"
+msgstr "RSS URL入力フィールド"
+
+msgid "Description textarea field"
+msgstr "説明テキストエリアフィールド"
+
+msgid "Submit button with nonce"
+msgstr "nonce付き送信ボタン"
+
+msgid "Error message placeholder"
+msgstr "エラーメッセージプレースホルダー"
+
+msgid "Success message placeholder"
+msgstr "成功メッセージプレースホルダー"
+
+msgid "Customize the HTML structure of the registration form:"
+msgstr "登録フォームのHTML構造をカスタマイズ："
+
+msgid "Reset to Default"
+msgstr "デフォルトに戻す"
+
+msgid "Customize the styling of the registration form:"
+msgstr "登録フォームのスタイルをカスタマイズ："
+
+msgid "Shortcode Usage"
+msgstr "ショートコード使用法"
+
+msgid "Add the registration form to any page or post using this shortcode:"
+msgstr "このショートコードを使用して、登録フォームを任意のページや投稿に追加してください："
+
+msgid "Settings saved successfully."
+msgstr "設定が正常に保存されました。"
+
+msgid "Registration Form"
+msgstr "登録フォーム"
