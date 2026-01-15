@@ -357,3 +357,45 @@ msgstr "設定が正常に保存されました。"
 
 msgid "Registration Form"
 msgstr "登録フォーム"
+
+msgid "Register Your Site"
+msgstr "サイトを登録"
+
+msgid "Site Name *"
+msgstr "サイト名 *"
+
+msgid "Site URL *"
+msgstr "サイトURL *"
+
+msgid "Your website address (e.g., https://example.com)"
+msgstr "ウェブサイトのアドレス（例: https://example.com）"
+
+msgid "RSS Feed URL"
+msgstr "RSSフィードURL"
+
+msgid "Optional: Your RSS feed URL"
+msgstr "オプション: RSSフィードURL"
+
+msgid "Tell us about your site"
+msgstr "サイトについて教えてください"
+
+msgid "Security check failed. Please try again."
+msgstr "セキュリティチェックに失敗しました。もう一度お試しください。"
+
+msgid "Thank you! Your site has been submitted for approval."
+msgstr "ありがとうございます！サイトが承認待ちで送信されました。"
+
+msgid "Please fill in all required fields."
+msgstr "すべての必須フィールドを入力してください。"
+
+msgid "Please enter a valid site URL."
+msgstr "有効なサイトURLを入力してください。"
+
+msgid "Please enter a valid RSS URL."
+msgstr "有効なRSS URLを入力してください。"
+
+msgid "This site has already been registered."
+msgstr "このサイトはすでに登録されています。"
+
+msgid "Failed to save registration. Please try again."
+msgstr "登録の保存に失敗しました。もう一度お試しください。"
