@@ -162,28 +162,28 @@ class RE_Access_Frontend_Registration {
      */
     private static function get_default_html() {
         return '<div class="reaccess-registration-form">
-    <h2>Register Your Site</h2>
+    <h2>' . esc_html__('Register Your Site', 're-access') . '</h2>
     [error_message]
     [success_message]
     <form method="post">
         <div class="reaccess-form-field">
-            <label for="site_name">Site Name *</label>
+            <label for="site_name">' . esc_html__('Site Name *', 're-access') . '</label>
             [site_name_field]
         </div>
         <div class="reaccess-form-field">
-            <label for="site_url">Site URL *</label>
+            <label for="site_url">' . esc_html__('Site URL *', 're-access') . '</label>
             [site_url_field]
-            <small>Your website address (e.g., https://example.com)</small>
+            <small>' . esc_html__('Your website address (e.g., https://example.com)', 're-access') . '</small>
         </div>
         <div class="reaccess-form-field">
-            <label for="rss_url">RSS Feed URL</label>
+            <label for="rss_url">' . esc_html__('RSS Feed URL', 're-access') . '</label>
             [rss_url_field]
-            <small>Optional: Your RSS feed URL</small>
+            <small>' . esc_html__('Optional: Your RSS feed URL', 're-access') . '</small>
         </div>
         <div class="reaccess-form-field">
-            <label for="description">Description</label>
+            <label for="description">' . esc_html__('Description', 're-access') . '</label>
             [description_field]
-            <small>Tell us about your site</small>
+            <small>' . esc_html__('Tell us about your site', 're-access') . '</small>
         </div>
         [submit_button]
     </form>
