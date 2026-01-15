@@ -181,16 +181,20 @@ class RE_Access_Link_Slots {
             'description' => sanitize_text_field($_POST['description']),
             'site_id' => (int)$_POST['site_id'],
             'html_template' => wp_kses_post($_POST['html_template']),
-            'css_template' => sanitize_textarea_field($_POST['css_template'])
+            'css_template' => wp_strip_all_tags(sanitize_textarea_field($_POST['css_template']))
         ];
         
-        $wpdb->query($wpdb->prepare(
+        $result = $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (setting_key, setting_value) VALUES (%s, %s) 
              ON DUPLICATE KEY UPDATE setting_value = %s",
             'link_slot_' . $slot,
             json_encode($data),
             json_encode($data)
         ));
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in save_slot (link): ' . $wpdb->last_error);
+        }
     }
     
     /**

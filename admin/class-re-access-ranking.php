@@ -264,13 +264,17 @@ class RE_Access_Ranking {
             'css_template' => isset($_POST['css_template']) ? wp_strip_all_tags(sanitize_textarea_field($_POST['css_template'])) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
         
-        $wpdb->query($wpdb->prepare(
+        $result = $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (setting_key, setting_value) VALUES (%s, %s) 
              ON DUPLICATE KEY UPDATE setting_value = %s",
             'ranking_settings',
             json_encode($settings),
             json_encode($settings)
         ));
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in save_settings (ranking): ' . $wpdb->last_error);
+        }
     }
     
     /**

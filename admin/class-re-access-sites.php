@@ -349,7 +349,7 @@ class RE_Access_Sites {
             }
         }
         
-        $wpdb->insert($table, [
+        $result = $wpdb->insert($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
             'site_url' => $site_url,
             'site_rss' => $site_rss,
@@ -357,6 +357,15 @@ class RE_Access_Sites {
             'status' => 'pending',
             'link_slot' => $link_slot
         ]);
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in handle_add_site: ' . $wpdb->last_error);
+            wp_die(
+                esc_html__('Database error occurred while adding the site.', 're-access'),
+                esc_html__('Database Error', 're-access'),
+                ['response' => 500]
+            );
+        }
         
         // Create notice
         RE_Access_Notices::add_notice('site_registered', sprintf(
@@ -384,7 +393,20 @@ class RE_Access_Sites {
         
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
         
-        $wpdb->update($table, ['status' => 'approved'], ['id' => $site_id]);
+        if (!$site) {
+            error_log('RE:Access - Site not found in handle_approve_site: ' . $site_id);
+            wp_die(
+                esc_html__('Site not found.', 're-access'),
+                esc_html__('Error', 're-access'),
+                ['response' => 404]
+            );
+        }
+        
+        $result = $wpdb->update($table, ['status' => 'approved'], ['id' => $site_id]);
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in handle_approve_site: ' . $wpdb->last_error);
+        }
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');
@@ -452,9 +474,23 @@ class RE_Access_Sites {
         $site_id = (int)$_POST['site_id'];
         
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
-        $site_status = $site ? $site->status : 'approved';
         
-        $wpdb->delete($table, ['id' => $site_id]);
+        if (!$site) {
+            error_log('RE:Access - Site not found in handle_delete_site: ' . $site_id);
+            wp_die(
+                esc_html__('Site not found.', 're-access'),
+                esc_html__('Error', 're-access'),
+                ['response' => 404]
+            );
+        }
+        
+        $site_status = $site->status;
+        
+        $result = $wpdb->delete($table, ['id' => $site_id]);
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in handle_delete_site: ' . $wpdb->last_error);
+        }
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');
@@ -500,13 +536,17 @@ class RE_Access_Sites {
             }
         }
         
-        $wpdb->update($table, [
+        $result = $wpdb->update($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
             'site_url' => $site_url,
             'site_rss' => $site_rss,
             'site_desc' => sanitize_textarea_field($_POST['site_desc'] ?? ''),
             'link_slot' => $link_slot
         ], ['id' => $site_id]);
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in handle_update_site: ' . $wpdb->last_error);
+        }
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');

@@ -237,16 +237,20 @@ class RE_Access_RSS_Slots {
             'item_count' => (int)$_POST['item_count'],
             'cache_duration' => max(10, min(1440, (int)$_POST['cache_duration'])),
             'html_template' => wp_kses_post($_POST['html_template']),
-            'css_template' => sanitize_textarea_field($_POST['css_template'])
+            'css_template' => wp_strip_all_tags(sanitize_textarea_field($_POST['css_template']))
         ];
         
-        $wpdb->query($wpdb->prepare(
+        $result = $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (setting_key, setting_value) VALUES (%s, %s) 
              ON DUPLICATE KEY UPDATE setting_value = %s",
             'rss_slot_' . $slot,
             json_encode($data),
             json_encode($data)
         ));
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in save_slot (rss): ' . $wpdb->last_error);
+        }
     }
     
     /**
@@ -321,7 +325,7 @@ class RE_Access_RSS_Slots {
         }
         
         $css = $slot_data['css_template'];
-        $output = '<style>' . esc_html($css) . '</style>';
+        $output = '<style>' . wp_strip_all_tags($css) . '</style>';
         
         foreach ($feed_items as $item) {
             $html = $slot_data['html_template'];
