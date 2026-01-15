@@ -345,3 +345,69 @@ msgstr "設定が正常に保存されました。"
 
 msgid "Registration Form"
 msgstr "登録フォーム"
+
+msgid "Reject"
+msgstr "却下"
+
+msgid "Rejected"
+msgstr "却下済み"
+
+msgid "Rejected (%d)"
+msgstr "却下済み (%d)"
+
+msgid "Site rejected successfully."
+msgstr "サイトが正常に却下されました。"
+
+msgid "Site rejected: %s"
+msgstr "サイトが却下されました: %s"
+
+msgid "Database error: Failed to reject site."
+msgstr "データベースエラー：サイトの却下に失敗しました。"
+
+msgid "Link Slot"
+msgstr "リンクスロット"
+
+msgid "Slot 1"
+msgstr "スロット 1"
+
+msgid "Slot 2"
+msgstr "スロット 2"
+
+msgid "Slot 3"
+msgstr "スロット 3"
+
+msgid "Slot 4"
+msgstr "スロット 4"
+
+msgid "Slot 5"
+msgstr "スロット 5"
+
+msgid "Assigned Site"
+msgstr "割り当てサイト"
+
+msgid "No site assigned"
+msgstr "サイトが割り当てられていません"
+
+msgid "None"
+msgstr "なし"
+
+msgid "Select a site to use as default for this slot when site_id is not provided in the shortcode."
+msgstr "ショートコードでsite_idが指定されていない場合に、このスロットのデフォルトとして使用するサイトを選択してください。"
+
+msgid "Assign this site to a link slot for display via shortcode."
+msgstr "ショートコード経由で表示するために、このサイトをリンクスロットに割り当ててください。"
+
+msgid "Use site_id parameter to override the assigned site:"
+msgstr "割り当てられたサイトを上書きするには、site_idパラメータを使用してください："
+
+msgid "The shortcode uses the default settings configured above."
+msgstr "ショートコードは上記で設定されたデフォルト設定を使用します。"
+
+msgid "Use [ranking_items] for dynamic content."
+msgstr "動的コンテンツには[ranking_items]を使用してください。"
+
+msgid "Custom CSS styles for the ranking display."
+msgstr "ランキング表示用のカスタムCSSスタイル。"
+
+msgid "Site ID is required or must be assigned to the slot"
+msgstr "サイトIDが必要であるか、スロットに割り当てられている必要があります"
