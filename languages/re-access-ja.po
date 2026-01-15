@@ -292,6 +292,18 @@ msgstr "無効なリダイレクトURLです"
 msgid "Invalid URL"
 msgstr "無効なURLです"
 
+msgid "The shortcode uses the default settings configured above."
+msgstr "ショートコードは上記のデフォルト設定を使用します。"
+
+msgid "No site assigned"
+msgstr "サイトが割り当てられていません"
+
+msgid "Assign this site to a link slot for display via shortcode."
+msgstr "このサイトをショートコードで表示するためのリンクスロットに割り当てます。"
+
+msgid "Reject"
+msgstr "拒否"
+
 msgid "Registration Form Settings"
 msgstr "登録フォーム設定"
 
