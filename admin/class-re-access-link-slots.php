@@ -15,6 +15,15 @@ class RE_Access_Link_Slots {
      * Render link slots page
      */
     public static function render() {
+        // Check user capability
+        if (!current_user_can('manage_options')) {
+            wp_die(
+                esc_html__('You do not have sufficient permissions to access this page.', 're-access'),
+                esc_html__('Access Denied', 're-access'),
+                ['response' => 403]
+            );
+        }
+        
         // Handle save
         if (isset($_POST['re_access_save_link_slot'])) {
             check_admin_referer('re_access_link_slot');

@@ -15,6 +15,15 @@ class RE_Access_Ranking {
      * Render ranking page
      */
     public static function render() {
+        // Check user capability
+        if (!current_user_can('manage_options')) {
+            wp_die(
+                esc_html__('You do not have sufficient permissions to access this page.', 're-access'),
+                esc_html__('Access Denied', 're-access'),
+                ['response' => 403]
+            );
+        }
+        
         // Handle settings save
         if (isset($_POST['re_access_save_ranking_settings'])) {
             check_admin_referer('re_access_ranking_settings');

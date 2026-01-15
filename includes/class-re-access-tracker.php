@@ -43,29 +43,38 @@ class RE_Access_Tracker {
         global $wpdb;
         $today = current_time('Y-m-d');
         
-        // Track PV
+        // Track PV with error handling
         $table = $wpdb->prefix . 'reaccess_daily';
-        $wpdb->query($wpdb->prepare(
+        $result = $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (date, pv_count) VALUES (%s, 1) 
              ON DUPLICATE KEY UPDATE pv_count = pv_count + 1",
             $today
         ));
         
-        // Track UU
+        if ($result === false) {
+            error_log('RE:Access - Database error in track_pageview (PV): ' . $wpdb->last_error);
+        }
+        
+        // Track UU with race condition protection
         $visitor_hash = self::get_visitor_hash();
         $cache_key = 'reaccess_visitor_' . $visitor_hash . '_' . $today;
         
         // Check if visitor already counted today (using transient cache)
+        // Use set_transient return value to detect race conditions
         if (!get_transient($cache_key)) {
-            // Increment UU count
-            $wpdb->query($wpdb->prepare(
-                "INSERT INTO $table (date, uu_count) VALUES (%s, 1) 
-                 ON DUPLICATE KEY UPDATE uu_count = uu_count + 1",
-                $today
-            ));
-            
-            // Cache for rest of the day
-            set_transient($cache_key, true, DAY_IN_SECONDS);
+            // Try to set transient first to prevent race condition
+            if (set_transient($cache_key, true, DAY_IN_SECONDS)) {
+                // Increment UU count only if transient was successfully set
+                $result = $wpdb->query($wpdb->prepare(
+                    "INSERT INTO $table (date, uu_count) VALUES (%s, 1) 
+                     ON DUPLICATE KEY UPDATE uu_count = uu_count + 1",
+                    $today
+                ));
+                
+                if ($result === false) {
+                    error_log('RE:Access - Database error in track_pageview (UU): ' . $wpdb->last_error);
+                }
+            }
         }
         
         // Track IN (referrer)
@@ -92,12 +101,16 @@ class RE_Access_Tracker {
         $today = current_time('Y-m-d');
         $table = $wpdb->prefix . 'reaccess_daily';
         
-        // Increment IN count
-        $wpdb->query($wpdb->prepare(
+        // Increment IN count with error handling
+        $result = $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (date, in_count) VALUES (%s, 1) 
              ON DUPLICATE KEY UPDATE in_count = in_count + 1",
             $today
         ));
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in track_referrer: ' . $wpdb->last_error);
+        }
         
         // Track site-specific IN if it's a registered site
         self::track_site_referrer($referer, $today);
@@ -117,18 +130,28 @@ class RE_Access_Tracker {
         
         if (false === $sites) {
             $sites = $wpdb->get_results($wpdb->prepare("SELECT id, site_url FROM $sites_table WHERE status = %s", 'approved'));
+            
+            if ($sites === null) {
+                error_log('RE:Access - Database error in track_site_referrer (get sites): ' . $wpdb->last_error);
+                return;
+            }
+            
             set_transient($cache_key, $sites, HOUR_IN_SECONDS);
         }
         
         foreach ($sites as $site) {
             if (strpos($referer, $site->site_url) === 0) {
-                // Increment site IN count
-                $wpdb->query($wpdb->prepare(
+                // Increment site IN count with error handling
+                $result = $wpdb->query($wpdb->prepare(
                     "INSERT INTO $tracking_table (site_id, date, in_count) VALUES (%d, %s, 1) 
                      ON DUPLICATE KEY UPDATE in_count = in_count + 1",
                     $site->id,
                     $date
                 ));
+                
+                if ($result === false) {
+                    error_log('RE:Access - Database error in track_site_referrer (update): ' . $wpdb->last_error);
+                }
                 break;
             }
         }
@@ -141,6 +164,9 @@ class RE_Access_Tracker {
         if (is_admin()) {
             return;
         }
+        
+        // Generate nonce for CSRF protection
+        $nonce = wp_create_nonce('re_access_track_out');
         ?>
         <script>
         (function() {
@@ -155,11 +181,11 @@ class RE_Access_Tracker {
                 var isExternal = href.indexOf('http') === 0 && href.indexOf(siteUrl) !== 0;
                 
                 if (isExternal) {
-                    // Track outbound click
+                    // Track outbound click with CSRF protection
                     var xhr = new XMLHttpRequest();
                     xhr.open('POST', '<?php echo esc_js(admin_url('admin-ajax.php')); ?>', true);
                     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href));
+                    xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href) + '&_wpnonce=<?php echo esc_js($nonce); ?>');
                 }
             });
         })();
@@ -171,6 +197,11 @@ class RE_Access_Tracker {
      * AJAX handler for outbound tracking
      */
     public static function ajax_track_out() {
+        // CSRF protection - verify nonce
+        if (!isset($_POST['_wpnonce']) || !wp_verify_nonce($_POST['_wpnonce'], 're_access_track_out')) {
+            wp_die('Security check failed', 403);
+        }
+        
         if (empty($_POST['url'])) {
             wp_die();
         }
@@ -182,11 +213,16 @@ class RE_Access_Tracker {
         $table = $wpdb->prefix . 'reaccess_daily';
         
         // Increment OUT count
-        $wpdb->query($wpdb->prepare(
+        $result = $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
              ON DUPLICATE KEY UPDATE out_count = out_count + 1",
             $today
         ));
+        
+        // Log database errors
+        if ($result === false) {
+            error_log('RE:Access - Database error in ajax_track_out: ' . $wpdb->last_error);
+        }
         
         // Track site-specific OUT if it's a registered site
         self::track_site_out($url, $today);
@@ -208,20 +244,32 @@ class RE_Access_Tracker {
         
         if (false === $sites) {
             $sites = $wpdb->get_results($wpdb->prepare("SELECT id, site_url FROM $sites_table WHERE status = %s", 'approved'));
+            
+            if ($sites === null) {
+                error_log('RE:Access - Database error in track_site_out (get sites): ' . $wpdb->last_error);
+                return;
+            }
+            
             set_transient($cache_key, $sites, HOUR_IN_SECONDS);
         }
         
         foreach ($sites as $site) {
             if (strpos($url, $site->site_url) === 0) {
-                // Increment site OUT count
-                $wpdb->query($wpdb->prepare(
+                // Increment site OUT count with error handling
+                $result = $wpdb->query($wpdb->prepare(
                     "INSERT INTO $tracking_table (site_id, date, out_count) VALUES (%d, %s, 1) 
                      ON DUPLICATE KEY UPDATE out_count = out_count + 1",
                     $site->id,
                     $date
                 ));
+                
+                if ($result === false) {
+                    error_log('RE:Access - Database error in track_site_out (update): ' . $wpdb->last_error);
+                }
                 break;
             }
+        }
+    }
         }
     }
     
@@ -305,17 +353,21 @@ class RE_Access_Tracker {
             );
         }
         
-        // Track the OUT click
+        // Track the OUT click with error handling
         global $wpdb;
         $today = current_time('Y-m-d');
         $table = $wpdb->prefix . 'reaccess_daily';
         
         // Increment OUT count
-        $wpdb->query($wpdb->prepare(
+        $result = $wpdb->query($wpdb->prepare(
             "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
              ON DUPLICATE KEY UPDATE out_count = out_count + 1",
             $today
         ));
+        
+        if ($result === false) {
+            error_log('RE:Access - Database error in handle_redirect_out: ' . $wpdb->last_error);
+        }
         
         // Track site-specific OUT if it's a registered site
         self::track_site_out($safe_url, $today);

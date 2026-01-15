@@ -38,6 +38,15 @@ class RE_Access_Sites {
      * Render sites page
      */
     public static function render() {
+        // Check user capability
+        if (!current_user_can('manage_options')) {
+            wp_die(
+                esc_html__('You do not have sufficient permissions to access this page.', 're-access'),
+                esc_html__('Access Denied', 're-access'),
+                ['response' => 403]
+            );
+        }
+        
         global $wpdb;
         
         // Get current status tab (approved, pending, or rejected)
