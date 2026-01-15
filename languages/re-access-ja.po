@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: RE:Access 1.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/TaniyanR/RE-Access\n"
 "POT-Creation-Date: 2024-01-12 11:30+0000\n"
-"PO-Revision-Date: 2024-01-12 11:30+0000\n"
+"PO-Revision-Date: 2026-01-15 13:20+0000\n"
 "Last-Translator: TaniyanR\n"
 "Language-Team: Japanese\n"
 "Language: ja\n"
@@ -136,6 +136,9 @@ msgstr "承認済み (%d)"
 msgid "Pending (%d)"
 msgstr "承認待ち (%d)"
 
+msgid "Rejected (%d)"
+msgstr "拒否済み (%d)"
+
 msgid "&laquo; Previous"
 msgstr "&laquo; 前へ"
 
@@ -157,6 +160,9 @@ msgstr "作成日時"
 msgid "Actions"
 msgstr "操作"
 
+msgid "Link Slot"
+msgstr "リンクスロット"
+
 msgid "Pending"
 msgstr "承認待ち"
 
@@ -168,6 +174,24 @@ msgstr "編集"
 
 msgid "Approve"
 msgstr "承認"
+
+msgid "None"
+msgstr "なし"
+
+msgid "Slot 1"
+msgstr "スロット 1"
+
+msgid "Slot 2"
+msgstr "スロット 2"
+
+msgid "Slot 3"
+msgstr "スロット 3"
+
+msgid "Slot 4"
+msgstr "スロット 4"
+
+msgid "Slot 5"
+msgstr "スロット 5"
 
 msgid "Are you sure?"
 msgstr "本当によろしいですか？"
@@ -187,6 +211,9 @@ msgstr "サイトが承認されました: %s"
 msgid "Site deleted: %s"
 msgstr "サイトが削除されました: %s"
 
+msgid "Assigned Site"
+msgstr "割り当てサイト"
+
 msgid "Ranking Settings"
 msgstr "ランキング設定"
 
@@ -201,6 +228,12 @@ msgstr "流入を表示"
 
 msgid "Show OUT"
 msgstr "流出を表示"
+
+msgid "Show PV"
+msgstr "PVを表示"
+
+msgid "Show UU"
+msgstr "UUを表示"
 
 msgid "Table Width"
 msgstr "テーブル幅"
