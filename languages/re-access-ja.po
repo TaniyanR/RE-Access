@@ -399,3 +399,24 @@ msgstr "このサイトはすでに登録されています。"
 
 msgid "Failed to save registration. Please try again."
 msgstr "登録の保存に失敗しました。もう一度お試しください。"
+
+msgid "You do not have sufficient permissions to access this page."
+msgstr "このページにアクセスするための十分な権限がありません。"
+
+msgid "Access Denied"
+msgstr "アクセスが拒否されました"
+
+msgid "Database error occurred while adding the site."
+msgstr "サイトの追加中にデータベースエラーが発生しました。"
+
+msgid "Database Error"
+msgstr "データベースエラー"
+
+msgid "Site not found."
+msgstr "サイトが見つかりません。"
+
+msgid "Error"
+msgstr "エラー"
+
+msgid "Database error: Failed to reject site."
+msgstr "データベースエラー: サイトの拒否に失敗しました。"
