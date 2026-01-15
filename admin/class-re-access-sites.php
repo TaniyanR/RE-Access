@@ -438,13 +438,23 @@ class RE_Access_Sites {
         $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
         
         if (!$site) {
-            wp_die(__('Site not found.', 're-access'));
+            error_log('RE:Access - Site not found in handle_reject_site: ' . $site_id);
+            wp_die(
+                esc_html__('Site not found.', 're-access'),
+                esc_html__('Error', 're-access'),
+                ['response' => 404]
+            );
         }
         
         $result = $wpdb->update($table, ['status' => 'rejected'], ['id' => $site_id]);
         
         if ($result === false) {
-            wp_die(__('Database error: Failed to reject site.', 're-access'));
+            error_log('RE:Access - Database error in handle_reject_site: ' . $wpdb->last_error);
+            wp_die(
+                esc_html__('Database error: Failed to reject site.', 're-access'),
+                esc_html__('Database Error', 're-access'),
+                ['response' => 500]
+            );
         }
         
         // Create notice
