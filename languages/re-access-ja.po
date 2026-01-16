@@ -139,6 +139,9 @@ msgstr "承認待ち (%d)"
 msgid "Rejected (%d)"
 msgstr "拒否済み (%d)"
 
+msgid "Rejected"
+msgstr "拒否済み"
+
 msgid "&laquo; Previous"
 msgstr "&laquo; 前へ"
 
