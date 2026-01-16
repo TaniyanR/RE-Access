@@ -129,6 +129,28 @@ class RE_Access_Ranking {
     }
     
     /**
+     * Sanitize CSS to prevent XSS attacks
+     * 
+     * This method removes dangerous CSS patterns that could be used for XSS attacks.
+     * Note: CSS content is NOT HTML-escaped as that would break valid CSS syntax.
+     * Instead, we strip all HTML tags and remove dangerous CSS features.
+     */
+    private static function sanitize_css($css) {
+        // Strip all tags first
+        $css = wp_strip_all_tags($css);
+        
+        // Remove dangerous CSS patterns (with whitespace handling)
+        $css = preg_replace('/expression\s*\(\s*/i', '', $css);
+        $css = preg_replace('/javascript\s*:\s*/i', '', $css);
+        $css = preg_replace('/vbscript\s*:\s*/i', '', $css);
+        $css = preg_replace('/-moz-binding\s*/i', '', $css);
+        $css = preg_replace('/@import\s*/i', '', $css);
+        $css = preg_replace('/behavior\s*:\s*/i', '', $css);
+        
+        return $css;
+    }
+    
+    /**
      * Get ranking data
      */
     public static function get_ranking_data($period, $limit) {
@@ -252,7 +274,7 @@ class RE_Access_Ranking {
             'head_bg' => sanitize_hex_color($_POST['head_bg']),
             'text' => sanitize_hex_color($_POST['text']),
             'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
-            'css_template' => isset($_POST['css_template']) ? wp_strip_all_tags(sanitize_textarea_field($_POST['css_template'])) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
+            'css_template' => isset($_POST['css_template']) ? self::sanitize_css($_POST['css_template']) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
         
         $wpdb->query($wpdb->prepare(
@@ -306,8 +328,10 @@ class RE_Access_Ranking {
             $html = '<div class="ranking-list">' . $items_html . '</div>';
         }
         
-        // Add CSS (already sanitized and stripped of tags, safe to output directly)
-        $css = '<style>' . $settings['css_template'] . '</style>';
+        // Sanitize CSS before output
+        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
+        // The sanitize_css() method already strips tags and removes dangerous patterns
+        $css = '<style>' . self::sanitize_css($settings['css_template']) . '</style>';
         
         // Wrap in a container with class (HTML already sanitized during save)
         $output = '<div class="re-access-ranking">';
