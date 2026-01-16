@@ -21,6 +21,19 @@ if (!defined('WPINC')) {
 class RE_Access_RSS_Slots {
     
     /**
+     * Sanitize CSS to prevent XSS attacks
+     */
+    private static function sanitize_css($css) {
+        $css = wp_strip_all_tags($css);
+        $css = preg_replace('/expression\s*\(/i', '', $css);
+        $css = preg_replace('/javascript\s*:/i', '', $css);
+        $css = preg_replace('/vbscript\s*:/i', '', $css);
+        $css = preg_replace('/-moz-binding/i', '', $css);
+        $css = preg_replace('/@import/i', '', $css);
+        return $css;
+    }
+    
+    /**
      * Render RSS slots page
      */
     public static function render() {
@@ -228,7 +241,7 @@ class RE_Access_RSS_Slots {
             'item_count' => (int)$_POST['item_count'],
             'cache_duration' => max(10, min(1440, (int)$_POST['cache_duration'])),
             'html_template' => wp_kses_post($_POST['html_template']),
-            'css_template' => sanitize_textarea_field($_POST['css_template'])
+            'css_template' => self::sanitize_css($_POST['css_template'])
         ];
         
         $wpdb->query($wpdb->prepare(

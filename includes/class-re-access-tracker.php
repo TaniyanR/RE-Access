@@ -83,8 +83,11 @@ class RE_Access_Tracker {
         $referer = sanitize_text_field(wp_unslash($_SERVER['HTTP_REFERER']));
         $site_url = home_url();
         
-        // Skip if referrer is from the same site
-        if (strpos($referer, $site_url) === 0) {
+        // Skip if referrer is from the same site - compare hosts properly
+        $referer_host = wp_parse_url($referer, PHP_URL_HOST);
+        $site_host = wp_parse_url($site_url, PHP_URL_HOST);
+        
+        if ($referer_host && $site_host && strtolower($referer_host) === strtolower($site_host)) {
             return;
         }
         
@@ -159,7 +162,7 @@ class RE_Access_Tracker {
                     var xhr = new XMLHttpRequest();
                     xhr.open('POST', '<?php echo esc_js(admin_url('admin-ajax.php')); ?>', true);
                     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href));
+                    xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href) + '&nonce=<?php echo wp_create_nonce("re_access_track_out"); ?>');
                 }
             });
         })();
@@ -171,6 +174,8 @@ class RE_Access_Tracker {
      * AJAX handler for outbound tracking
      */
     public static function ajax_track_out() {
+        check_ajax_referer('re_access_track_out', 'nonce');
+        
         if (empty($_POST['url'])) {
             wp_die();
         }

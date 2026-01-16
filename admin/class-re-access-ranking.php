@@ -12,6 +12,19 @@ if (!defined('WPINC')) {
 class RE_Access_Ranking {
     
     /**
+     * Sanitize CSS to prevent XSS attacks
+     */
+    private static function sanitize_css($css) {
+        $css = wp_strip_all_tags($css);
+        $css = preg_replace('/expression\s*\(/i', '', $css);
+        $css = preg_replace('/javascript\s*:/i', '', $css);
+        $css = preg_replace('/vbscript\s*:/i', '', $css);
+        $css = preg_replace('/-moz-binding/i', '', $css);
+        $css = preg_replace('/@import/i', '', $css);
+        return $css;
+    }
+    
+    /**
      * Render ranking page
      */
     public static function render() {
@@ -252,7 +265,7 @@ class RE_Access_Ranking {
             'head_bg' => sanitize_hex_color($_POST['head_bg']),
             'text' => sanitize_hex_color($_POST['text']),
             'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
-            'css_template' => isset($_POST['css_template']) ? wp_strip_all_tags(sanitize_textarea_field($_POST['css_template'])) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
+            'css_template' => isset($_POST['css_template']) ? self::sanitize_css($_POST['css_template']) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
         
         $wpdb->query($wpdb->prepare(
