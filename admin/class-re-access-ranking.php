@@ -139,13 +139,13 @@ class RE_Access_Ranking {
         // Strip all tags first
         $css = wp_strip_all_tags($css);
         
-        // Remove dangerous CSS patterns
-        $css = preg_replace('/expression\s*\(/i', '', $css);
-        $css = preg_replace('/javascript\s*:/i', '', $css);
-        $css = preg_replace('/vbscript\s*:/i', '', $css);
-        $css = preg_replace('/-moz-binding/i', '', $css);
-        $css = preg_replace('/@import/i', '', $css);
-        $css = preg_replace('/behavior\s*:/i', '', $css);
+        // Remove dangerous CSS patterns (with whitespace handling)
+        $css = preg_replace('/expression\s*\(\s*/i', '', $css);
+        $css = preg_replace('/javascript\s*:\s*/i', '', $css);
+        $css = preg_replace('/vbscript\s*:\s*/i', '', $css);
+        $css = preg_replace('/-moz-binding\s*/i', '', $css);
+        $css = preg_replace('/@import\s*/i', '', $css);
+        $css = preg_replace('/behavior\s*:\s*/i', '', $css);
         
         return $css;
     }
