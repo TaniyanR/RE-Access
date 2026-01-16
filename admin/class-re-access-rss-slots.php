@@ -215,6 +215,10 @@ class RE_Access_RSS_Slots {
     
     /**
      * Sanitize CSS to prevent XSS attacks
+     * 
+     * This method removes dangerous CSS patterns that could be used for XSS attacks.
+     * Note: CSS content is NOT HTML-escaped as that would break valid CSS syntax.
+     * Instead, we strip all HTML tags and remove dangerous CSS features.
      */
     private static function sanitize_css($css) {
         // Strip all tags first
@@ -280,6 +284,8 @@ class RE_Access_RSS_Slots {
         $html2 = str_replace('[rr_item_date]', date('Y-m-d'), $html2);
         
         // Sanitize CSS before output
+        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
+        // The sanitize_css() method already strips tags and removes dangerous patterns
         $output = '<style>' . self::sanitize_css($css) . '</style>';
         $output .= $html1;
         $output .= $html2;
@@ -332,6 +338,8 @@ class RE_Access_RSS_Slots {
         
         $css = $slot_data['css_template'];
         // Sanitize CSS before output
+        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
+        // The sanitize_css() method already strips tags and removes dangerous patterns
         $output = '<style>' . self::sanitize_css($css) . '</style>';
         
         foreach ($feed_items as $item) {

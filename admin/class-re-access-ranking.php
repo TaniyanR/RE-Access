@@ -130,6 +130,10 @@ class RE_Access_Ranking {
     
     /**
      * Sanitize CSS to prevent XSS attacks
+     * 
+     * This method removes dangerous CSS patterns that could be used for XSS attacks.
+     * Note: CSS content is NOT HTML-escaped as that would break valid CSS syntax.
+     * Instead, we strip all HTML tags and remove dangerous CSS features.
      */
     private static function sanitize_css($css) {
         // Strip all tags first
@@ -325,6 +329,8 @@ class RE_Access_Ranking {
         }
         
         // Sanitize CSS before output
+        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
+        // The sanitize_css() method already strips tags and removes dangerous patterns
         $css = '<style>' . self::sanitize_css($settings['css_template']) . '</style>';
         
         // Wrap in a container with class (HTML already sanitized during save)
