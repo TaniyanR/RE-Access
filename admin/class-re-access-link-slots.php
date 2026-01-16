@@ -173,6 +173,28 @@ class RE_Access_Link_Slots {
     }
     
     /**
+     * Sanitize CSS to prevent XSS attacks
+     * 
+     * This method removes dangerous CSS patterns that could be used for XSS attacks.
+     * Note: CSS content is NOT HTML-escaped as that would break valid CSS syntax.
+     * Instead, we strip all HTML tags and remove dangerous CSS features.
+     */
+    private static function sanitize_css($css) {
+        // Strip all tags first
+        $css = wp_strip_all_tags($css);
+        
+        // Remove dangerous CSS patterns (with whitespace handling)
+        $css = preg_replace('/expression\s*\(\s*/i', '', $css);
+        $css = preg_replace('/javascript\s*:\s*/i', '', $css);
+        $css = preg_replace('/vbscript\s*:\s*/i', '', $css);
+        $css = preg_replace('/-moz-binding\s*/i', '', $css);
+        $css = preg_replace('/@import\s*/i', '', $css);
+        $css = preg_replace('/behavior\s*:\s*/i', '', $css);
+        
+        return $css;
+    }
+    
+    /**
      * Save slot
      */
     private static function save_slot() {
@@ -209,8 +231,10 @@ class RE_Access_Link_Slots {
         $html = str_replace('[rr_site_url]', 'https://example.com', $html);
         $html = str_replace('[rr_site_desc]', 'This is an example site description for preview purposes.', $html);
         
-        // CSS is already sanitized on save, output directly in style tag
-        $output = '<style>' . wp_strip_all_tags($css) . '</style>';
+        // Sanitize CSS before output
+        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
+        // The sanitize_css() method already strips tags and removes dangerous patterns
+        $output = '<style>' . self::sanitize_css($css) . '</style>';
         $output .= $html;
         
         return $output;
@@ -263,8 +287,10 @@ class RE_Access_Link_Slots {
         $html = str_replace('[rr_site_url]', esc_url($site->site_url), $html);
         $html = str_replace('[rr_site_desc]', esc_html($site->site_desc), $html);
         
-        // CSS is already sanitized on save, output directly in style tag
-        $output = '<style>' . wp_strip_all_tags($css) . '</style>';
+        // Sanitize CSS before output
+        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
+        // The sanitize_css() method already strips tags and removes dangerous patterns
+        $output = '<style>' . self::sanitize_css($css) . '</style>';
         $output .= $html;
         
         return apply_filters('re_access_link_slot_output', $output, $atts, $site);

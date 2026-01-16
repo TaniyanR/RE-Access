@@ -53,10 +53,10 @@ class RE_Access_Tracker {
         
         // Track UU
         $visitor_hash = self::get_visitor_hash();
-        $cache_key = 'reaccess_visitor_' . $visitor_hash . '_' . $today;
+        $cache_key = 'reaccess_visitor_' . $visitor_hash .  '_' . $today;
         
         // Check if visitor already counted today (using transient cache)
-        if (!get_transient($cache_key)) {
+        if (! get_transient($cache_key)) {
             // Increment UU count
             $wpdb->query($wpdb->prepare(
                 "INSERT INTO $table (date, uu_count) VALUES (%s, 1) 
@@ -83,10 +83,11 @@ class RE_Access_Tracker {
         $referer = sanitize_text_field(wp_unslash($_SERVER['HTTP_REFERER']));
         $site_url = home_url();
         
-        // Skip if referrer is from the same site - compare hosts properly
+        // Parse URLs to compare hosts properly
         $referer_host = wp_parse_url($referer, PHP_URL_HOST);
         $site_host = wp_parse_url($site_url, PHP_URL_HOST);
         
+        // Skip if referrer is from the same site (compare hosts only)
         if ($referer_host && $site_host && strtolower($referer_host) === strtolower($site_host)) {
             return;
         }
@@ -152,20 +153,20 @@ class RE_Access_Tracker {
         <script>
         (function() {
             document.addEventListener('click', function(e) {
-                var link = e.target.closest('a');
-                if (!link) return;
+                var link = e.target. closest('a');
+                if (! link) return;
                 
                 var href = link.getAttribute('href');
-                if (!href || href.indexOf('#') === 0) return;
+                if (! href || href.indexOf('#') === 0) return;
                 
                 var siteUrl = '<?php echo esc_js(home_url()); ?>';
                 var isExternal = href.indexOf('http') === 0 && href.indexOf(siteUrl) !== 0;
                 
                 if (isExternal) {
-                    // Track outbound click
+                    // Track outbound click with nonce for CSRF protection
                     var xhr = new XMLHttpRequest();
                     xhr.open('POST', '<?php echo esc_js(admin_url('admin-ajax.php')); ?>', true);
-                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr. setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
                     xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href) + '&nonce=<?php echo wp_create_nonce("re_access_track_out"); ?>');
                 }
             });
@@ -178,6 +179,7 @@ class RE_Access_Tracker {
      * AJAX handler for outbound tracking
      */
     public static function ajax_track_out() {
+        // Add nonce verification for CSRF protection
         check_ajax_referer('re_access_track_out', 'nonce');
         
         if (empty($_POST['url'])) {
@@ -209,7 +211,7 @@ class RE_Access_Tracker {
     private static function track_site_out($url, $date) {
         global $wpdb;
         $sites_table = $wpdb->prefix . 'reaccess_sites';
-        $tracking_table = $wpdb->prefix . 'reaccess_site_daily';
+        $tracking_table = $wpdb->prefix .  'reaccess_site_daily';
         
         // Get cached approved sites (cache for 1 hour)
         $cache_key = 're_access_approved_sites';
@@ -248,7 +250,7 @@ class RE_Access_Tracker {
         $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
         $date = current_time('Y-m-d');
         // MD5 is used per specification for visitor tracking (non-cryptographic purpose)
-        return md5($ip . '|' . $user_agent . '|' . $date);
+        return md5($ip . '|' . $user_agent .  '|' . $date);
     }
     
     /**
@@ -285,10 +287,10 @@ class RE_Access_Tracker {
     
     /**
      * Handle redirect OUT endpoint
-     * Supports both plain URL in 'to' query var and base64url-encoded destination.
+     * Supports both plain URL in 'to' query var and base64url-encoded destination. 
      * Usage examples:
      *  - /?reaccess_out=1&to=https%3A%2F%2Fexample.com
-     *  - /?reaccess_out=1&to= aBase64UrlEncodedString
+     *  - /?reaccess_out=1&to=aBase64UrlEncodedString
      */
     public static function handle_redirect_out() {
         // Only on front-end template redirects
@@ -299,7 +301,7 @@ class RE_Access_Tracker {
             return;
         }
         
-        // If 'to' is base64url encoded, try decoding; otherwise treat as raw URL.
+        // If 'to' is base64url encoded, try decoding; otherwise treat as raw URL. 
         $decoded = self::base64url_decode($to_url);
         if ($decoded && wp_parse_url($decoded, PHP_URL_SCHEME)) {
             $candidate = $decoded;
@@ -310,7 +312,7 @@ class RE_Access_Tracker {
         // Validate and sanitize the redirect URL
         $safe_url = self::validate_redirect_url($candidate);
         
-        if (!$safe_url) {
+        if (! $safe_url) {
             wp_die(
                 esc_html__('Invalid redirect URL', 're-access'),
                 esc_html__('Invalid URL', 're-access'),
@@ -346,7 +348,7 @@ class RE_Access_Tracker {
      * @return string|null Decoded string or null on failure
      */
     private static function base64url_decode($input) {
-        if (!is_string($input) || $input === '') {
+        if (! is_string($input) || $input === '') {
             return null;
         }
         // Replace URL-safe characters with standard base64 characters
@@ -355,13 +357,13 @@ class RE_Access_Tracker {
         // Add padding if needed
         $remainder = strlen($base64) % 4;
         if ($remainder) {
-            $base64 .= str_repeat('=', 4 - $remainder);
+            $base64 . = str_repeat('=', 4 - $remainder);
         }
         
         // Decode
         $decoded = base64_decode($base64, true);
         
-        return $decoded !== false ? $decoded : null;
+        return $decoded !== false ? $decoded :  null;
     }
     
     /**
@@ -381,7 +383,7 @@ class RE_Access_Tracker {
         $parsed = wp_parse_url($url);
         
         // URL must have a scheme (http or https)
-        if (empty($parsed['scheme']) || !in_array(strtolower($parsed['scheme']), ['http', 'https'], true)) {
+        if (empty($parsed['scheme']) || ! in_array(strtolower($parsed['scheme']), ['http', 'https'], true)) {
             return false;
         }
         
