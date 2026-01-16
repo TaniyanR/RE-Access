@@ -124,7 +124,11 @@ class RE_Access_Tracker {
         }
         
         foreach ($sites as $site) {
-            if (strpos($referer, $site->site_url) === 0) {
+            // Compare hosts properly to prevent bypass
+            $referer_host = wp_parse_url($referer, PHP_URL_HOST);
+            $site_host = wp_parse_url($site->site_url, PHP_URL_HOST);
+            
+            if ($referer_host && $site_host && strtolower($referer_host) === strtolower($site_host)) {
                 // Increment site IN count
                 $wpdb->query($wpdb->prepare(
                     "INSERT INTO $tracking_table (site_id, date, in_count) VALUES (%d, %s, 1) 
@@ -217,7 +221,11 @@ class RE_Access_Tracker {
         }
         
         foreach ($sites as $site) {
-            if (strpos($url, $site->site_url) === 0) {
+            // Compare hosts properly to prevent bypass
+            $url_host = wp_parse_url($url, PHP_URL_HOST);
+            $site_host = wp_parse_url($site->site_url, PHP_URL_HOST);
+            
+            if ($url_host && $site_host && strtolower($url_host) === strtolower($site_host)) {
                 // Increment site OUT count
                 $wpdb->query($wpdb->prepare(
                     "INSERT INTO $tracking_table (site_id, date, out_count) VALUES (%d, %s, 1) 
