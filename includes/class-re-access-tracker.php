@@ -83,8 +83,12 @@ class RE_Access_Tracker {
         $referer = sanitize_text_field(wp_unslash($_SERVER['HTTP_REFERER']));
         $site_url = home_url();
         
-        // Skip if referrer is from the same site
-        if (strpos($referer, $site_url) === 0) {
+        // Parse URLs to compare hosts properly
+        $referer_host = wp_parse_url($referer, PHP_URL_HOST);
+        $site_host = wp_parse_url($site_url, PHP_URL_HOST);
+        
+        // Skip if referrer is from the same site (compare hosts only)
+        if ($referer_host && $site_host && strtolower($referer_host) === strtolower($site_host)) {
             return;
         }
         
@@ -155,11 +159,11 @@ class RE_Access_Tracker {
                 var isExternal = href.indexOf('http') === 0 && href.indexOf(siteUrl) !== 0;
                 
                 if (isExternal) {
-                    // Track outbound click
+                    // Track outbound click with nonce for CSRF protection
                     var xhr = new XMLHttpRequest();
                     xhr.open('POST', '<?php echo esc_js(admin_url('admin-ajax.php')); ?>', true);
                     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href));
+                    xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href) + '&nonce=<?php echo wp_create_nonce("re_access_track_out"); ?>');
                 }
             });
         })();
@@ -171,6 +175,9 @@ class RE_Access_Tracker {
      * AJAX handler for outbound tracking
      */
     public static function ajax_track_out() {
+        // Add nonce verification for CSRF protection
+        check_ajax_referer('re_access_track_out', 'nonce');
+        
         if (empty($_POST['url'])) {
             wp_die();
         }

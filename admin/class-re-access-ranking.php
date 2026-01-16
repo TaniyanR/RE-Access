@@ -129,6 +129,24 @@ class RE_Access_Ranking {
     }
     
     /**
+     * Sanitize CSS to prevent XSS attacks
+     */
+    private static function sanitize_css($css) {
+        // Strip all tags first
+        $css = wp_strip_all_tags($css);
+        
+        // Remove dangerous CSS patterns
+        $css = preg_replace('/expression\s*\(/i', '', $css);
+        $css = preg_replace('/javascript\s*:/i', '', $css);
+        $css = preg_replace('/vbscript\s*:/i', '', $css);
+        $css = preg_replace('/-moz-binding/i', '', $css);
+        $css = preg_replace('/@import/i', '', $css);
+        $css = preg_replace('/behavior\s*:/i', '', $css);
+        
+        return $css;
+    }
+    
+    /**
      * Get ranking data
      */
     public static function get_ranking_data($period, $limit) {
@@ -252,7 +270,7 @@ class RE_Access_Ranking {
             'head_bg' => sanitize_hex_color($_POST['head_bg']),
             'text' => sanitize_hex_color($_POST['text']),
             'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
-            'css_template' => isset($_POST['css_template']) ? wp_strip_all_tags(sanitize_textarea_field($_POST['css_template'])) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
+            'css_template' => isset($_POST['css_template']) ? self::sanitize_css($_POST['css_template']) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
         
         $wpdb->query($wpdb->prepare(
@@ -306,8 +324,8 @@ class RE_Access_Ranking {
             $html = '<div class="ranking-list">' . $items_html . '</div>';
         }
         
-        // Add CSS (already sanitized and stripped of tags, safe to output directly)
-        $css = '<style>' . $settings['css_template'] . '</style>';
+        // Sanitize CSS before output
+        $css = '<style>' . self::sanitize_css($settings['css_template']) . '</style>';
         
         // Wrap in a container with class (HTML already sanitized during save)
         $output = '<div class="re-access-ranking">';

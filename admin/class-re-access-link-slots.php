@@ -160,6 +160,24 @@ class RE_Access_Link_Slots {
     }
     
     /**
+     * Sanitize CSS to prevent XSS attacks
+     */
+    private static function sanitize_css($css) {
+        // Strip all tags first
+        $css = wp_strip_all_tags($css);
+        
+        // Remove dangerous CSS patterns
+        $css = preg_replace('/expression\s*\(/i', '', $css);
+        $css = preg_replace('/javascript\s*:/i', '', $css);
+        $css = preg_replace('/vbscript\s*:/i', '', $css);
+        $css = preg_replace('/-moz-binding/i', '', $css);
+        $css = preg_replace('/@import/i', '', $css);
+        $css = preg_replace('/behavior\s*:/i', '', $css);
+        
+        return $css;
+    }
+    
+    /**
      * Save slot
      */
     private static function save_slot() {
@@ -172,7 +190,7 @@ class RE_Access_Link_Slots {
             'description' => sanitize_text_field($_POST['description']),
             'site_id' => (int)$_POST['site_id'],
             'html_template' => wp_kses_post($_POST['html_template']),
-            'css_template' => sanitize_textarea_field($_POST['css_template'])
+            'css_template' => self::sanitize_css($_POST['css_template'])
         ];
         
         $wpdb->query($wpdb->prepare(
@@ -196,8 +214,8 @@ class RE_Access_Link_Slots {
         $html = str_replace('[rr_site_url]', 'https://example.com', $html);
         $html = str_replace('[rr_site_desc]', 'This is an example site description for preview purposes.', $html);
         
-        // CSS is already sanitized on save, output directly in style tag
-        $output = '<style>' . wp_strip_all_tags($css) . '</style>';
+        // Sanitize CSS before output
+        $output = '<style>' . self::sanitize_css($css) . '</style>';
         $output .= $html;
         
         return $output;
@@ -250,8 +268,8 @@ class RE_Access_Link_Slots {
         $html = str_replace('[rr_site_url]', esc_url($site->site_url), $html);
         $html = str_replace('[rr_site_desc]', esc_html($site->site_desc), $html);
         
-        // CSS is already sanitized on save, output directly in style tag
-        $output = '<style>' . wp_strip_all_tags($css) . '</style>';
+        // Sanitize CSS before output
+        $output = '<style>' . self::sanitize_css($css) . '</style>';
         $output .= $html;
         
         return apply_filters('re_access_link_slot_output', $output, $atts, $site);

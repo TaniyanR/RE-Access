@@ -214,6 +214,24 @@ class RE_Access_RSS_Slots {
     }
     
     /**
+     * Sanitize CSS to prevent XSS attacks
+     */
+    private static function sanitize_css($css) {
+        // Strip all tags first
+        $css = wp_strip_all_tags($css);
+        
+        // Remove dangerous CSS patterns
+        $css = preg_replace('/expression\s*\(/i', '', $css);
+        $css = preg_replace('/javascript\s*:/i', '', $css);
+        $css = preg_replace('/vbscript\s*:/i', '', $css);
+        $css = preg_replace('/-moz-binding/i', '', $css);
+        $css = preg_replace('/@import/i', '', $css);
+        $css = preg_replace('/behavior\s*:/i', '', $css);
+        
+        return $css;
+    }
+    
+    /**
      * Save slot
      */
     private static function save_slot() {
@@ -228,7 +246,7 @@ class RE_Access_RSS_Slots {
             'item_count' => (int)$_POST['item_count'],
             'cache_duration' => max(10, min(1440, (int)$_POST['cache_duration'])),
             'html_template' => wp_kses_post($_POST['html_template']),
-            'css_template' => sanitize_textarea_field($_POST['css_template'])
+            'css_template' => self::sanitize_css($_POST['css_template'])
         ];
         
         $wpdb->query($wpdb->prepare(
@@ -261,7 +279,8 @@ class RE_Access_RSS_Slots {
         $html2 = str_replace('[rr_item_url]', 'https://example.com/article2', $html2);
         $html2 = str_replace('[rr_item_date]', date('Y-m-d'), $html2);
         
-        $output = '<style>' . esc_html($css) . '</style>';
+        // Sanitize CSS before output
+        $output = '<style>' . self::sanitize_css($css) . '</style>';
         $output .= $html1;
         $output .= $html2;
         
@@ -312,7 +331,8 @@ class RE_Access_RSS_Slots {
         }
         
         $css = $slot_data['css_template'];
-        $output = '<style>' . esc_html($css) . '</style>';
+        // Sanitize CSS before output
+        $output = '<style>' . self::sanitize_css($css) . '</style>';
         
         foreach ($feed_items as $item) {
             $html = $slot_data['html_template'];
