@@ -6,7 +6,7 @@ msgstr ""
 "Project-Id-Version: RE:Access 1.0.0\n"
 "Report-Msgid-Bugs-To: https://github.com/TaniyanR/RE-Access\n"
 "POT-Creation-Date: 2024-01-12 11:30+0000\n"
-"PO-Revision-Date: 2026-01-15 13:20+0000\n"
+"PO-Revision-Date: 2026-01-16 09:30+0000\n"
 "Last-Translator: TaniyanR\n"
 "Language-Team: Japanese\n"
 "Language: ja\n"
@@ -138,6 +138,9 @@ msgstr "承認待ち (%d)"
 
 msgid "Rejected (%d)"
 msgstr "拒否済み (%d)"
+
+msgid "Rejected"
+msgstr "拒否済み"
 
 msgid "&laquo; Previous"
 msgstr "&laquo; 前へ"
