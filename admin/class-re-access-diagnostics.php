@@ -149,8 +149,8 @@ class RE_Access_Diagnostics {
             <tbody>
                 <?php foreach ($tables as $table => $description): 
                     $full_table = $wpdb->prefix . $table;
-                    $exists = $wpdb->get_var("SHOW TABLES LIKE '$full_table'") === $full_table;
-                    $count = $exists ? $wpdb->get_var("SELECT COUNT(*) FROM $full_table") : 0;
+                    $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $full_table)) === $full_table;
+                    $count = $exists ? $wpdb->get_var("SELECT COUNT(*) FROM `{$full_table}`") : 0;
                 ?>
                 <tr>
                     <td><?php echo esc_html($description); ?><br><code><?php echo esc_html($full_table); ?></code></td>
