@@ -172,9 +172,6 @@ msgstr "承認待ち"
 msgid "Approved"
 msgstr "承認済み"
 
-msgid "Rejected"
-msgstr "拒否済み"
-
 msgid "Edit"
 msgstr "編集"
 
@@ -438,3 +435,45 @@ msgstr "このサイトはすでに登録されています。"
 
 msgid "Failed to save registration. Please try again."
 msgstr "登録の保存に失敗しました。もう一度お試しください。"
+
+msgid "Diagnostics"
+msgstr "診断"
+
+msgid "RE:Access Diagnostics"
+msgstr "RE:Access 診断"
+
+msgid "System Information"
+msgstr "システム情報"
+
+msgid "File Checks"
+msgstr "ファイルチェック"
+
+msgid "Database Tables"
+msgstr "データベーステーブル"
+
+msgid "Class Loading Status"
+msgstr "クラス読み込み状態"
+
+msgid "PHP Version"
+msgstr "PHPバージョン"
+
+msgid "WordPress Version"
+msgstr "WordPressバージョン"
+
+msgid "Plugin Version"
+msgstr "プラグインバージョン"
+
+msgid "Plugin Directory"
+msgstr "プラグインディレクトリ"
+
+msgid "Size"
+msgstr "サイズ"
+
+msgid "Table"
+msgstr "テーブル"
+
+msgid "Rows"
+msgstr "行数"
+
+msgid "Class"
+msgstr "クラス"

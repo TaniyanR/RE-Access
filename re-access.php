@@ -59,21 +59,40 @@ $maybe_require('admin/class-re-access-ranking.php');
 $maybe_require('admin/class-re-access-link-slots.php');
 $maybe_require('admin/class-re-access-rss-slots.php');
 $maybe_require('admin/class-re-access-registration-form.php');
+$maybe_require('admin/class-re-access-diagnostics.php');
 
 /**
  * Activation hook: Create tables and save plugin version
  */
 function re_access_activate() {
-    // Create DB tables if the DB helper exists
-    if (class_exists('RE_Access_Database')) {
-        // create_tables should create necessary DB schema
-        RE_Access_Database::create_tables();
+    try {
+        // Create DB tables if the DB helper exists
+        if (class_exists('RE_Access_Database')) {
+            RE_Access_Database::create_tables();
+        } else {
+            throw new Exception('RE_Access_Database class not found. Check if includes/class-re-access-database.php exists and is valid.');
+        }
+
+        // Save plugin version (consistent option key)
+        update_option('re_access_version', RE_ACCESS_VERSION);
+        
+        // Log successful activation
+        error_log('RE:Access plugin activated successfully. Version: ' . RE_ACCESS_VERSION);
+        
+    } catch (Exception $e) {
+        // Log the error
+        error_log('RE:Access activation error: ' . $e->getMessage());
+        
+        // Show user-friendly error message
+        wp_die(
+            '<h1>RE:Access Activation Error</h1>' .
+            '<p><strong>Error:</strong> ' . esc_html($e->getMessage()) . '</p>' .
+            '<p>Please check your PHP error log for more details.</p>' .
+            '<p><a href="' . admin_url('plugins.php') . '">Back to Plugins</a></p>',
+            'Plugin Activation Error',
+            ['response' => 500]
+        );
     }
-
-    // Save plugin version (consistent option key)
-    update_option('re_access_version', RE_ACCESS_VERSION);
-
-    // flush_rewrite_rules(); // enable if rewrite rules are added later
 }
 register_activation_hook(__FILE__, 're_access_activate');
 
@@ -211,6 +230,17 @@ function re_access_admin_menu() {
             'manage_options',
             're-access-registration-form',
             ['RE_Access_Registration_Form', 'render']
+        );
+    }
+    
+    if (class_exists('RE_Access_Diagnostics') && method_exists('RE_Access_Diagnostics', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('Diagnostics', 're-access'),
+            __('Diagnostics', 're-access'),
+            'manage_options',
+            're-access-diagnostics',
+            ['RE_Access_Diagnostics', 'render']
         );
     }
 }
