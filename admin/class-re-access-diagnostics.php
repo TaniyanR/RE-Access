@@ -19,25 +19,34 @@ class RE_Access_Diagnostics {
         <div class="wrap">
             <h1><?php esc_html_e('RE:Access Diagnostics', 're-access'); ?></h1>
             
-            <div style="background: #fff; padding: 20px; margin: 20px 0; border: 1px solid #ccc;">
+            <style>
+                .re-access-diagnostics-section {
+                    background: #fff;
+                    padding: 20px;
+                    margin: 20px 0;
+                    border: 1px solid #ccc;
+                }
+            </style>
+            
+            <div class="re-access-diagnostics-section">
                 <h2><?php esc_html_e('System Information', 're-access'); ?></h2>
                 
                 <?php self::render_system_info(); ?>
             </div>
             
-            <div style="background: #fff; padding: 20px; margin: 20px 0; border: 1px solid #ccc;">
+            <div class="re-access-diagnostics-section">
                 <h2><?php esc_html_e('File Checks', 're-access'); ?></h2>
                 
                 <?php self::render_file_checks(); ?>
             </div>
             
-            <div style="background: #fff; padding: 20px; margin: 20px 0; border: 1px solid #ccc;">
+            <div class="re-access-diagnostics-section">
                 <h2><?php esc_html_e('Database Tables', 're-access'); ?></h2>
                 
                 <?php self::render_database_checks(); ?>
             </div>
             
-            <div style="background: #fff; padding: 20px; margin: 20px 0; border: 1px solid #ccc;">
+            <div class="re-access-diagnostics-section">
                 <h2><?php esc_html_e('Class Loading Status', 're-access'); ?></h2>
                 
                 <?php self::render_class_checks(); ?>
@@ -55,13 +64,13 @@ class RE_Access_Diagnostics {
             <tr>
                 <th><?php esc_html_e('PHP Version', 're-access'); ?></th>
                 <td><?php echo esc_html(phpversion()); ?> 
-                    <?php echo version_compare(phpversion(), '8.1.0', '>=') ? '✅' : '❌ (Requires 8.1+)'; ?>
+                    <?php echo version_compare(phpversion(), '8.1.0', '>=') ? '✅' : esc_html('❌ (Requires 8.1+)'); ?>
                 </td>
             </tr>
             <tr>
                 <th><?php esc_html_e('WordPress Version', 're-access'); ?></th>
                 <td><?php echo esc_html(get_bloginfo('version')); ?>
-                    <?php echo version_compare(get_bloginfo('version'), '6.0', '>=') ? '✅' : '❌ (Requires 6.0+)'; ?>
+                    <?php echo version_compare(get_bloginfo('version'), '6.0', '>=') ? '✅' : esc_html('❌ (Requires 6.0+)'); ?>
                 </td>
             </tr>
             <tr>
@@ -150,6 +159,7 @@ class RE_Access_Diagnostics {
                 <?php foreach ($tables as $table => $description): 
                     $full_table = $wpdb->prefix . $table;
                     $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $full_table)) === $full_table;
+                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is hardcoded and safe
                     $count = $exists ? $wpdb->get_var("SELECT COUNT(*) FROM `{$full_table}`") : 0;
                 ?>
                 <tr>
