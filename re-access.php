@@ -253,7 +253,8 @@ function re_access_dashboard_page() {
     ?>
     <div class="wrap">
         <h1><?php echo esc_html__('RE:Access Dashboard', 're-access'); ?></h1>
-        <p><?php echo esc_html__('Welcome to RE:Access version', 're-access') . ' ' . RE_ACCESS_VERSION; ?></p>
+        <p><?php printf(esc_html__('Welcome to RE:Access version %s', 're-access'), RE_ACCESS_VERSION); ?></p>
+        <p><?php esc_html_e('The full dashboard is available when all required classes are loaded.', 're-access'); ?></p>
     </div>
     <?php
 }
