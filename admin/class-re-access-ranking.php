@@ -12,19 +12,6 @@ if (!defined('WPINC')) {
 class RE_Access_Ranking {
     
     /**
-     * Sanitize CSS to prevent XSS attacks
-     */
-    private static function sanitize_css($css) {
-        $css = wp_strip_all_tags($css);
-        $css = preg_replace('/expression\s*\(/i', '', $css);
-        $css = preg_replace('/javascript\s*:/i', '', $css);
-        $css = preg_replace('/vbscript\s*:/i', '', $css);
-        $css = preg_replace('/-moz-binding/i', '', $css);
-        $css = preg_replace('/@import/i', '', $css);
-        return $css;
-    }
-    
-    /**
      * Render ranking page
      */
     public static function render() {
