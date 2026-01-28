@@ -23,12 +23,12 @@ re-access/
 - Text Domain: re-access
 
 ### 2. Activation Hook
-- Saves version '1.0.0' to WordPress options table under key 're-access_version'
+- Saves version '1.0.0' to WordPress options table under key 're_access_version'
 - Function: `re_access_activate()`
 
 ### 3. Admin Menu
 - Menu title: "RE:Access"
-- Position: 79 (above Settings which is at 80)
+- Position: computed dynamically to appear immediately above Settings
 - Icon: dashicons-chart-line
 - Capability required: 'manage_options'
 - Callback: `re_access_dashboard_page()`
@@ -72,13 +72,13 @@ zip -r re-access.zip re-access/
 #### 3. Verify Activation Hook
 ```sql
 -- Check WordPress database
-SELECT option_name, option_value FROM wp_options WHERE option_name = 're-access_version';
+SELECT option_name, option_value FROM wp_options WHERE option_name = 're_access_version';
 -- Expected: option_value = '1.0.0'
 ```
 
 Or via PHP:
 ```php
-echo get_option('re-access_version');
+echo get_option('re_access_version');
 // Expected output: 1.0.0
 ```
 
@@ -114,12 +114,6 @@ php -l re-access.php
 # Should return: No syntax errors detected
 ```
 
-### Check for Old Names
-```bash
-grep -ri "access-z\|access_z\|access z" re-access/
-# Should return: no results (clean)
-```
-
 ### Verify PHP Version Requirement
 ```bash
 php -v
@@ -145,7 +139,7 @@ php -v
 2. Deactivate RE:Access
 3. **Expected Result**: Deactivates cleanly
 4. Menu item disappears from admin sidebar
-5. Option 're-access_version' remains in database (normal behavior)
+5. Option 're_access_version' remains in database (normal behavior)
 
 ## Uninstall Test
 1. Deactivate the plugin
@@ -163,10 +157,9 @@ php -v
 ## Success Criteria
 ✓ Plugin activates without errors
 ✓ Version 1.0.0 is saved to wp_options
-✓ Admin menu appears at position 79
+✓ Admin menu appears immediately above Settings
 ✓ Dashboard page is accessible and displays correctly
 ✓ No PHP warnings or errors in debug log
-✓ No traces of old plugin names (access-z, az, Access Z)
 ✓ Vendor directory is included and functional
 ✓ Plugin update checker is initialized
 

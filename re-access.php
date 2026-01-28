@@ -3,7 +3,7 @@
  * Plugin Name: RE:Access
  * Plugin URI: https://github.com/TaniyanR/RE-Access
  * Description: WordPress plugin for visualizing and reciprocating access circulation through mutual RSS/links
- * Version: 1.1.0
+ * Version: 1.0.0
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: TaniyanR
@@ -20,7 +20,7 @@ if (!defined('WPINC')) {
 }
 
 // Plugin constants
-define('RE_ACCESS_VERSION', '1.1.0');
+define('RE_ACCESS_VERSION', '1.0.0');
 define('RE_ACCESS_PLUGIN_FILE', __FILE__);
 define('RE_ACCESS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -29,11 +29,6 @@ define('RE_ACCESS_PLUGIN_URL', plugin_dir_url(__FILE__));
 $composer_autoload = RE_ACCESS_PLUGIN_DIR . 'vendor/autoload.php';
 if (file_exists($composer_autoload)) {
     require_once $composer_autoload;
-}
-
-// Set up plugin-update-checker backwards compatible class alias
-if (!class_exists('Puc_v4_Factory', false) && class_exists('YahnisElsts\PluginUpdateChecker\v5p6\PucFactory', true)) {
-    class_alias('YahnisElsts\PluginUpdateChecker\v5p6\PucFactory', 'Puc_v4_Factory');
 }
 
 /*
@@ -58,8 +53,6 @@ $maybe_require('admin/class-re-access-sites.php');
 $maybe_require('admin/class-re-access-ranking.php');
 $maybe_require('admin/class-re-access-link-slots.php');
 $maybe_require('admin/class-re-access-rss-slots.php');
-$maybe_require('admin/class-re-access-registration-form.php');
-$maybe_require('admin/class-re-access-diagnostics.php');
 
 /**
  * Activation hook: Create tables and save plugin version
@@ -128,11 +121,6 @@ function re_access_init() {
         RE_Access_Frontend_Registration::init();
     }
     
-    // Initialize registration form settings if available
-    if (class_exists('RE_Access_Registration_Form') && method_exists('RE_Access_Registration_Form', 'init')) {
-        RE_Access_Registration_Form::init();
-    }
-
     // Register shortcodes only when their handler classes exist
     if (class_exists('RE_Access_Notices')) {
         add_shortcode('reaccess_notice', ['RE_Access_Notices', 'shortcode_notice']);
@@ -161,6 +149,18 @@ add_action('init', 're_access_init');
  * Add admin menu (only register pages for classes that exist)
  */
 function re_access_admin_menu() {
+    global $menu;
+
+    $menu_position = null;
+    if (is_array($menu)) {
+        foreach ($menu as $index => $item) {
+            if (isset($item[2]) && $item[2] === 'options-general.php') {
+                $menu_position = max(0, (int) $index - 1);
+                break;
+            }
+        }
+    }
+
     // Main dashboard (fallback to simple callback if class missing)
     if (class_exists('RE_Access_Dashboard') && method_exists('RE_Access_Dashboard', 'render')) {
         $callback = ['RE_Access_Dashboard', 'render'];
@@ -175,7 +175,7 @@ function re_access_admin_menu() {
         're-access',
         $callback,
         'dashicons-chart-line',
-        79
+        $menu_position
     );
 
     if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'render')) {
@@ -222,27 +222,6 @@ function re_access_admin_menu() {
         );
     }
     
-    if (class_exists('RE_Access_Registration_Form') && method_exists('RE_Access_Registration_Form', 'render')) {
-        add_submenu_page(
-            're-access',
-            __('Registration Form', 're-access'),
-            __('Registration Form', 're-access'),
-            'manage_options',
-            're-access-registration-form',
-            ['RE_Access_Registration_Form', 'render']
-        );
-    }
-    
-    if (class_exists('RE_Access_Diagnostics') && method_exists('RE_Access_Diagnostics', 'render')) {
-        add_submenu_page(
-            're-access',
-            __('Diagnostics', 're-access'),
-            __('Diagnostics', 're-access'),
-            'manage_options',
-            're-access-diagnostics',
-            ['RE_Access_Diagnostics', 'render']
-        );
-    }
 }
 add_action('admin_menu', 're_access_admin_menu');
 
@@ -277,8 +256,8 @@ function re_access_init_update_checker() {
         $github_url = 'https://github.com/TaniyanR/RE-Access';
     }
 
-    if (class_exists('Puc_v4_Factory')) {
-        $updateChecker = Puc_v4_Factory::buildUpdateChecker(
+    if (class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
+        $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
             $github_url,
             __FILE__,
             're-access'
