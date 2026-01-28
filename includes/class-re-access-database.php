@@ -290,42 +290,8 @@ class RE_Access_Database {
             return;
         }
 
-        // Place migration calls here, example:
-        // if (version_compare($saved_version, '1.1.0', '<')) {
-        //     self::migrate_to_1_1_0();
-        // }
-        
-        // Migration to add link_slot column
-        if (version_compare($saved_version, '1.1.0', '<')) {
-            self::migrate_to_1_1_0();
-        }
-
         // Update version after migrations
         update_option('re_access_version', $current_version);
-    }
-
-    /**
-     * Migration to version 1.1.0 - Add link_slot column
-     */
-    private static function migrate_to_1_1_0() {
-        global $wpdb;
-        $table_sites = $wpdb->prefix . 'reaccess_sites';
-        
-        // Check if column already exists using SHOW COLUMNS
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-        $column_exists = $wpdb->get_results(
-            "SHOW COLUMNS FROM `{$table_sites}` LIKE 'link_slot'"
-        );
-        
-        // Add column if it doesn't exist
-        if (empty($column_exists)) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            $wpdb->query(
-                "ALTER TABLE `{$table_sites}` 
-                ADD COLUMN `link_slot` int(11) DEFAULT NULL AFTER `status`,
-                ADD KEY `link_slot` (`link_slot`)"
-            );
-        }
     }
 
     /**

@@ -59,7 +59,7 @@ re-access/
 ### バージョン管理
 
 プラグインのバージョンは `re-access.php` のヘッダーと `RE_ACCESS_VERSION` 定数で管理されています。
-有効化時に WordPress options に `re-access_version` キーで保存されます。
+有効化時に WordPress options に `re_access_version` キーで保存されます。
 
 ### 自動更新
 
