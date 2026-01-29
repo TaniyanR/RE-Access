@@ -372,8 +372,17 @@ class RE_Access_Tracker {
      */
     private static function set_daily_uu_cookie($date) {
         $cookie_name = self::get_daily_cookie_name($date);
-        $expiry = strtotime('tomorrow', current_time('timestamp'));
-        setcookie($cookie_name, '1', $expiry, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true);
+        $timezone = wp_timezone();
+        $end_of_day = (new DateTimeImmutable('now', $timezone))->setTime(23, 59, 59);
+        $expiry = $end_of_day->getTimestamp();
+        setcookie($cookie_name, '1', [
+            'expires' => $expiry,
+            'path' => COOKIEPATH,
+            'domain' => COOKIE_DOMAIN,
+            'secure' => is_ssl(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
         $_COOKIE[$cookie_name] = '1';
     }
 
@@ -384,7 +393,7 @@ class RE_Access_Tracker {
      * @return string
      */
     private static function get_daily_cookie_name($date) {
-        return 're_access_uu_' . str_replace('-', '', $date);
+        return 'reaccess_uu_' . str_replace('-', '', $date);
     }
 
     /**
