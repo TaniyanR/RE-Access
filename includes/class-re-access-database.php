@@ -21,48 +21,45 @@ class RE_Access_Database {
 
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
 
-        // Site registrations table (for managing registered sites with approval workflow)
+        // Site registrations table (mutual site info + approval status)
         $table_sites = $wpdb->prefix . 'reaccess_sites';
         $sql_sites = "CREATE TABLE $table_sites (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             site_name varchar(255) NOT NULL,
             site_url varchar(512) NOT NULL,
             site_rss varchar(512) DEFAULT '',
-            site_desc text DEFAULT '',
             status varchar(20) DEFAULT 'pending',
-            link_slot int(11) DEFAULT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY status (status),
             KEY created_at (created_at),
-            KEY link_slot (link_slot)
+            KEY site_url (site_url)
         ) $charset_collate;";
         dbDelta($sql_sites);
 
-        // Daily access metrics table (for IN/OUT/PV/UU)
+        // Daily access metrics table (site-wide totals)
         $table_daily = $wpdb->prefix . 'reaccess_daily';
         $sql_daily = "CREATE TABLE $table_daily (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             date date NOT NULL,
-            pv_count int(11) DEFAULT 0,
-            uu_count int(11) DEFAULT 0,
-            in_count int(11) DEFAULT 0,
-            out_count int(11) DEFAULT 0,
+            total int(11) DEFAULT 0,
+            uu int(11) DEFAULT 0,
+            pv int(11) DEFAULT 0,
+            `out` int(11) DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY date (date),
             KEY date_index (date)
         ) $charset_collate;";
         dbDelta($sql_daily);
 
-        // Site-specific daily tracking table (for site-specific IN/OUT tracking and ranking)
+        // Site-specific daily tracking table (for rankings)
         $table_site_daily = $wpdb->prefix . 'reaccess_site_daily';
         $sql_site_daily = "CREATE TABLE $table_site_daily (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             site_id bigint(20) NOT NULL,
             date date NOT NULL,
-            in_count int(11) DEFAULT 0,
-            out_count int(11) DEFAULT 0,
+            `in` int(11) DEFAULT 0,
+            `out` int(11) DEFAULT 0,
             PRIMARY KEY  (id),
             UNIQUE KEY site_date (site_id, date),
             KEY site_id (site_id),
@@ -71,33 +68,18 @@ class RE_Access_Database {
         ) $charset_collate;";
         dbDelta($sql_site_daily);
 
-        // Notices/announcements table (for auto-generated announcements)
+        // Notices/announcements table
         $table_notice = $wpdb->prefix . 'reaccess_notice';
         $sql_notice = "CREATE TABLE $table_notice (
             id bigint(20) NOT NULL AUTO_INCREMENT,
-            notice_type varchar(50) NOT NULL,
-            notice_content text NOT NULL,
-            site_id bigint(20) DEFAULT NULL,
+            type varchar(50) NOT NULL,
+            message text NOT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY created_at (created_at),
-            KEY notice_type (notice_type),
-            KEY site_id (site_id)
+            KEY type (type)
         ) $charset_collate;";
         dbDelta($sql_notice);
-
-        // Settings table (for storing plugin configuration)
-        $table_settings = $wpdb->prefix . 'reaccess_settings';
-        $sql_settings = "CREATE TABLE $table_settings (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            setting_key varchar(255) NOT NULL,
-            setting_value longtext NOT NULL,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
-            UNIQUE KEY setting_key (setting_key)
-        ) $charset_collate;";
-        dbDelta($sql_settings);
     }
 
     /**
@@ -112,7 +94,6 @@ class RE_Access_Database {
             'reaccess_daily',
             'reaccess_site_daily',
             'reaccess_notice',
-            'reaccess_settings',
         ];
 
         foreach ($table_names as $table_name) {
