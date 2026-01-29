@@ -22,7 +22,7 @@ class RE_Access_Link_Slots {
         }
         
         $current_slot = isset($_GET['slot']) ? (int)$_GET['slot'] : 1;
-        $current_slot = max(1, min(5, $current_slot));
+        $current_slot = max(1, min(10, $current_slot));
         
         $slot_data = self::get_slot_data($current_slot);
         
@@ -32,7 +32,7 @@ class RE_Access_Link_Slots {
             
             <!-- Slot Tabs -->
             <div class="nav-tab-wrapper" style="margin: 20px 0;">
-                <?php for ($i = 1; $i <= 5; $i++): ?>
+                <?php for ($i = 1; $i <= 10; $i++): ?>
                     <a href="?page=re-access-link-slots&slot=<?php echo $i; ?>" 
                        class="nav-tab <?php echo $current_slot == $i ? 'nav-tab-active' : ''; ?>">
                         <?php printf(esc_html__('Slot %d', 're-access'), $i); ?>
@@ -116,9 +116,6 @@ class RE_Access_Link_Slots {
      * Get slot data
      */
     private static function get_slot_data($slot) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reaccess_settings';
-        
         $defaults = [
             'description' => '',
             'site_id' => 0,
@@ -146,17 +143,13 @@ class RE_Access_Link_Slots {
     text-decoration: underline;
 }'
         ];
-        
-        $saved = $wpdb->get_row($wpdb->prepare(
-            "SELECT setting_value FROM $table WHERE setting_key = %s",
-            'link_slot_' . $slot
-        ));
-        
-        if ($saved) {
-            return array_merge($defaults, json_decode($saved->setting_value, true));
+
+        $saved = get_option('re_access_link_slot_' . $slot, []);
+        if (!is_array($saved)) {
+            $saved = [];
         }
-        
-        return $defaults;
+
+        return array_merge($defaults, $saved);
     }
     
     /**
@@ -185,9 +178,6 @@ class RE_Access_Link_Slots {
      * Save slot
      */
     private static function save_slot() {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reaccess_settings';
-        
         $slot = (int)$_POST['slot_number'];
         
         $data = [
@@ -196,14 +186,8 @@ class RE_Access_Link_Slots {
             'html_template' => wp_kses_post($_POST['html_template']),
             'css_template' => self::sanitize_css($_POST['css_template'])
         ];
-        
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (setting_key, setting_value) VALUES (%s, %s) 
-             ON DUPLICATE KEY UPDATE setting_value = %s",
-            'link_slot_' . $slot,
-            json_encode($data),
-            json_encode($data)
-        ));
+
+        update_option('re_access_link_slot_' . $slot, $data);
     }
     
     /**
@@ -236,11 +220,15 @@ class RE_Access_Link_Slots {
             'site_id' => 0
         ], $atts);
         
-        $slot = max(1, min(5, (int)$atts['slot']));
+        $slot = max(1, min(10, (int)$atts['slot']));
         $site_id = (int)$atts['site_id'];
         
         // Get slot template
         $slot_data = self::get_slot_data($slot);
+
+        if (!$site_id && !empty($slot_data['site_id'])) {
+            $site_id = (int) $slot_data['site_id'];
+        }
         
         global $wpdb;
         $sites_table = $wpdb->prefix . 'reaccess_sites';
@@ -252,14 +240,7 @@ class RE_Access_Link_Slots {
                 $site_id
             ));
         } else {
-            // Filter by link_slot column - get sites assigned to this slot
-            $sites = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $sites_table WHERE link_slot = %d AND status = 'approved' ORDER BY id ASC",
-                $slot
-            ));
-            
-            // Use the first site found for this slot
-            $site = !empty($sites) ? $sites[0] : null;
+            $site = null;
         }
         
         if (!$site) {
@@ -268,11 +249,16 @@ class RE_Access_Link_Slots {
         
         $html = $slot_data['html_template'];
         $css = $slot_data['css_template'];
+
+        $site_url = $site->site_url;
+        if (class_exists('RE_Access_Tracker')) {
+            $site_url = RE_Access_Tracker::get_outgoing_url($site->site_url);
+        }
         
         // Replace variables
         $html = str_replace('[rr_site_name]', esc_html($site->site_name), $html);
-        $html = str_replace('[rr_site_url]', esc_url($site->site_url), $html);
-        $html = str_replace('[rr_site_desc]', esc_html($site->site_desc), $html);
+        $html = str_replace('[rr_site_url]', esc_url($site_url), $html);
+        $html = str_replace('[rr_site_desc]', '', $html);
         
         // Sanitize CSS before output
         // Note: CSS is not HTML-escaped as it would break valid CSS syntax

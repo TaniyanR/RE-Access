@@ -17,14 +17,7 @@ class RE_Access_Tracker {
     public static function init() {
         // Track page views on every page load
         add_action('wp', [__CLASS__, 'track_pageview']);
-        
-        // Track outbound links via JavaScript
-        add_action('wp_footer', [__CLASS__, 'add_outbound_tracking_script']);
-        
-        // AJAX handler for outbound tracking
-        add_action('wp_ajax_re_access_track_out', [__CLASS__, 'ajax_track_out']);
-        add_action('wp_ajax_nopriv_re_access_track_out', [__CLASS__, 'ajax_track_out']);
-        
+
         // Register query vars for redirect endpoint
         add_filter('query_vars', [__CLASS__, 'register_query_vars']);
         
@@ -36,7 +29,7 @@ class RE_Access_Tracker {
      * Track page view and unique visitor
      */
     public static function track_pageview() {
-        if (is_admin() || wp_doing_ajax() || wp_doing_cron()) {
+        if (self::should_skip_tracking()) {
             return;
         }
         
@@ -45,27 +38,12 @@ class RE_Access_Tracker {
         
         // Track PV
         $table = $wpdb->prefix . 'reaccess_daily';
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (date, pv_count) VALUES (%s, 1) 
-             ON DUPLICATE KEY UPDATE pv_count = pv_count + 1",
-            $today
-        ));
+        self::increment_daily_metric($table, 'pv', $today);
         
         // Track UU
-        $visitor_hash = self::get_visitor_hash();
-        $cache_key = 'reaccess_visitor_' . $visitor_hash . '_' . $today;
-        
-        // Check if visitor already counted today (using transient cache)
-        if (! get_transient($cache_key)) {
-            // Increment UU count
-            $wpdb->query($wpdb->prepare(
-                "INSERT INTO $table (date, uu_count) VALUES (%s, 1) 
-                 ON DUPLICATE KEY UPDATE uu_count = uu_count + 1",
-                $today
-            ));
-            
-            // Cache for rest of the day
-            set_transient($cache_key, true, DAY_IN_SECONDS);
+        if (!self::has_daily_uu_cookie($today)) {
+            self::increment_daily_metric($table, 'uu', $today);
+            self::set_daily_uu_cookie($today);
         }
         
         // Track IN (referrer)
@@ -76,19 +54,24 @@ class RE_Access_Tracker {
      * Track referrer as IN
      */
     private static function track_referrer() {
-        if (empty($_SERVER['HTTP_REFERER'])) {
+        $referer = wp_get_raw_referer();
+        if (empty($referer)) {
             return;
         }
         
-        $referer = sanitize_text_field(wp_unslash($_SERVER['HTTP_REFERER']));
-        $site_url = home_url();
-        
-        // Parse URLs to compare hosts properly
-        $referer_host = wp_parse_url($referer, PHP_URL_HOST);
-        $site_host = wp_parse_url($site_url, PHP_URL_HOST);
-        
+        $referer = sanitize_text_field(wp_unslash($referer));
+        $normalized_referer = RE_Access_Database::resolve_url_alias($referer);
+        $normalized_home = RE_Access_Database::resolve_url_alias(home_url());
+
+        if (empty($normalized_referer) || empty($normalized_home)) {
+            return;
+        }
+
+        $referer_host = self::get_base_domain($normalized_referer);
+        $home_host = self::get_base_domain($normalized_home);
+
         // Skip if referrer is from the same site (compare hosts only)
-        if ($referer_host && $site_host && strtolower($referer_host) === strtolower($site_host)) {
+        if ($referer_host && $home_host && strtolower($referer_host) === strtolower($home_host)) {
             return;
         }
         
@@ -97,14 +80,10 @@ class RE_Access_Tracker {
         $table = $wpdb->prefix . 'reaccess_daily';
         
         // Increment IN count
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (date, in_count) VALUES (%s, 1) 
-             ON DUPLICATE KEY UPDATE in_count = in_count + 1",
-            $today
-        ));
+        self::increment_daily_metric($table, 'total', $today);
         
         // Track site-specific IN if it's a registered site
-        self::track_site_referrer($referer, $today);
+        self::track_site_referrer($normalized_referer, $today);
     }
     
     /**
@@ -125,84 +104,18 @@ class RE_Access_Tracker {
         }
         
         foreach ($sites as $site) {
-            // Compare hosts properly to prevent bypass
-            $referer_host = wp_parse_url($referer, PHP_URL_HOST);
-            $site_host = wp_parse_url($site->site_url, PHP_URL_HOST);
-            
+            $site_normalized = RE_Access_Database::resolve_url_alias($site->site_url);
+            if (empty($site_normalized)) {
+                continue;
+            }
+            $referer_host = self::get_base_domain($referer);
+            $site_host = self::get_base_domain($site_normalized);
+
             if ($referer_host && $site_host && strtolower($referer_host) === strtolower($site_host)) {
-                // Increment site IN count
-                $wpdb->query($wpdb->prepare(
-                    "INSERT INTO $tracking_table (site_id, date, in_count) VALUES (%d, %s, 1) 
-                     ON DUPLICATE KEY UPDATE in_count = in_count + 1",
-                    $site->id,
-                    $date
-                ));
+                self::increment_site_metric($tracking_table, $site->id, $date, 'in');
                 break;
             }
         }
-    }
-    
-    /**
-     * Add outbound link tracking script
-     */
-    public static function add_outbound_tracking_script() {
-        if (is_admin()) {
-            return;
-        }
-        ?>
-        <script>
-        (function() {
-            document.addEventListener('click', function(e) {
-                var link = e.target.closest('a');
-                if (! link) return;
-                
-                var href = link.getAttribute('href');
-                if (! href || href.indexOf('#') === 0) return;
-                
-                var siteUrl = '<?php echo esc_js(home_url()); ?>';
-                var isExternal = href.indexOf('http') === 0 && href.indexOf(siteUrl) !== 0;
-                
-                if (isExternal) {
-                    // Track outbound click with nonce for CSRF protection
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('POST', '<?php echo esc_js(admin_url('admin-ajax.php')); ?>', true);
-                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    xhr.send('action=re_access_track_out&url=' + encodeURIComponent(href) + '&nonce=<?php echo wp_create_nonce("re_access_track_out"); ?>');
-                }
-            });
-        })();
-        </script>
-        <?php
-    }
-    
-    /**
-     * AJAX handler for outbound tracking
-     */
-    public static function ajax_track_out() {
-        // Add nonce verification for CSRF protection
-        check_ajax_referer('re_access_track_out', 'nonce');
-        
-        if (empty($_POST['url'])) {
-            wp_die();
-        }
-        
-        $url = sanitize_text_field($_POST['url']);
-        
-        global $wpdb;
-        $today = current_time('Y-m-d');
-        $table = $wpdb->prefix . 'reaccess_daily';
-        
-        // Increment OUT count
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
-             ON DUPLICATE KEY UPDATE out_count = out_count + 1",
-            $today
-        ));
-        
-        // Track site-specific OUT if it's a registered site
-        self::track_site_out($url, $today);
-        
-        wp_die();
     }
     
     /**
@@ -223,57 +136,18 @@ class RE_Access_Tracker {
         }
         
         foreach ($sites as $site) {
-            // Compare hosts properly to prevent bypass
-            $url_host = wp_parse_url($url, PHP_URL_HOST);
-            $site_host = wp_parse_url($site->site_url, PHP_URL_HOST);
-            
+            $site_normalized = RE_Access_Database::resolve_url_alias($site->site_url);
+            if (empty($site_normalized)) {
+                continue;
+            }
+            $url_host = self::get_base_domain($url);
+            $site_host = self::get_base_domain($site_normalized);
+
             if ($url_host && $site_host && strtolower($url_host) === strtolower($site_host)) {
-                // Increment site OUT count
-                $wpdb->query($wpdb->prepare(
-                    "INSERT INTO $tracking_table (site_id, date, out_count) VALUES (%d, %s, 1) 
-                     ON DUPLICATE KEY UPDATE out_count = out_count + 1",
-                    $site->id,
-                    $date
-                ));
+                self::increment_site_metric($tracking_table, $site->id, $date, 'out');
                 break;
             }
         }
-    }
-    
-    /**
-     * Get visitor hash for unique user tracking
-     * Uses MD5 (per specification) of IP, user agent, and date with delimiters
-     * Note: MD5 is sufficient for non-cryptographic visitor identification
-     */
-    private static function get_visitor_hash() {
-        $ip = self::get_client_ip();
-        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
-        $date = current_time('Y-m-d');
-        // MD5 is used per specification for visitor tracking (non-cryptographic purpose)
-        return md5($ip . '|' . $user_agent . '|' . $date);
-    }
-    
-    /**
-     * Get client IP address
-     */
-    private static function get_client_ip() {
-        $ip = '';
-        
-        if (isset($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } elseif (isset($_SERVER['HTTP_X_FORWARDED'])) {
-            $ip = $_SERVER['HTTP_X_FORWARDED'];
-        } elseif (isset($_SERVER['HTTP_FORWARDED_FOR'])) {
-            $ip = $_SERVER['HTTP_FORWARDED_FOR'];
-        } elseif (isset($_SERVER['HTTP_FORWARDED'])) {
-            $ip = $_SERVER['HTTP_FORWARDED'];
-        } elseif (isset($_SERVER['REMOTE_ADDR'])) {
-            $ip = $_SERVER['REMOTE_ADDR'];
-        }
-        
-        return sanitize_text_field($ip);
     }
     
     /**
@@ -326,14 +200,13 @@ class RE_Access_Tracker {
         $table = $wpdb->prefix . 'reaccess_daily';
         
         // Increment OUT count
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (date, out_count) VALUES (%s, 1) 
-             ON DUPLICATE KEY UPDATE out_count = out_count + 1",
-            $today
-        ));
+        self::increment_daily_metric($table, 'out', $today);
         
         // Track site-specific OUT if it's a registered site
-        self::track_site_out($safe_url, $today);
+        $normalized_target = RE_Access_Database::resolve_url_alias($safe_url);
+        if (!empty($normalized_target)) {
+            self::track_site_out($normalized_target, $today);
+        }
         
         // Perform 302 redirect
         wp_redirect($safe_url, 302);
@@ -364,6 +237,37 @@ class RE_Access_Tracker {
         $decoded = base64_decode($base64, true);
         
         return $decoded !== false ? $decoded : null;
+    }
+
+    /**
+     * Encode URL in base64url format.
+     *
+     * @param string $input
+     * @return string
+     */
+    private static function base64url_encode($input) {
+        $encoded = base64_encode($input);
+        $encoded = rtrim($encoded, '=');
+        return strtr($encoded, '+/', '-_');
+    }
+
+    /**
+     * Generate outbound tracking URL.
+     *
+     * @param string $url
+     * @return string
+     */
+    public static function get_outgoing_url($url) {
+        $encoded = self::base64url_encode($url);
+        $out_url = add_query_arg(
+            [
+                'reaccess_out' => '1',
+                'to' => $encoded,
+            ],
+            home_url('/')
+        );
+
+        return apply_filters('re_access_outgoing_url', $out_url, $url);
     }
     
     /**
@@ -427,5 +331,116 @@ class RE_Access_Tracker {
         }
         
         return $safe_url;
+    }
+
+    /**
+     * Determine if tracking should be skipped.
+     *
+     * @return bool
+     */
+    private static function should_skip_tracking() {
+        if (is_admin() || wp_doing_ajax() || wp_doing_cron()) {
+            return true;
+        }
+
+        if (defined('REST_REQUEST') && REST_REQUEST) {
+            return true;
+        }
+
+        if (defined('WP_CLI') && WP_CLI) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if UU cookie exists for today.
+     *
+     * @param string $date
+     * @return bool
+     */
+    private static function has_daily_uu_cookie($date) {
+        $cookie_name = self::get_daily_cookie_name($date);
+        return isset($_COOKIE[$cookie_name]);
+    }
+
+    /**
+     * Set UU cookie for today.
+     *
+     * @param string $date
+     */
+    private static function set_daily_uu_cookie($date) {
+        $cookie_name = self::get_daily_cookie_name($date);
+        $expiry = strtotime('tomorrow', current_time('timestamp'));
+        setcookie($cookie_name, '1', $expiry, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true);
+        $_COOKIE[$cookie_name] = '1';
+    }
+
+    /**
+     * Get daily cookie name.
+     *
+     * @param string $date
+     * @return string
+     */
+    private static function get_daily_cookie_name($date) {
+        return 're_access_uu_' . str_replace('-', '', $date);
+    }
+
+    /**
+     * Increment a daily metric.
+     *
+     * @param string $table
+     * @param string $metric
+     * @param string $date
+     */
+    private static function increment_daily_metric($table, $metric, $date) {
+        global $wpdb;
+
+        $allowed = ['total', 'uu', 'pv', 'out'];
+        if (!in_array($metric, $allowed, true)) {
+            return;
+        }
+
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO $table (date, $metric) VALUES (%s, 1)
+             ON DUPLICATE KEY UPDATE $metric = $metric + 1",
+            $date
+        ));
+    }
+
+    /**
+     * Increment a site-specific metric.
+     *
+     * @param string $table
+     * @param int $site_id
+     * @param string $date
+     * @param string $metric
+     */
+    private static function increment_site_metric($table, $site_id, $date, $metric) {
+        global $wpdb;
+
+        $allowed = ['in', 'out'];
+        if (!in_array($metric, $allowed, true)) {
+            return;
+        }
+
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO $table (site_id, date, $metric) VALUES (%d, %s, 1)
+             ON DUPLICATE KEY UPDATE $metric = $metric + 1",
+            $site_id,
+            $date
+        ));
+    }
+
+    /**
+     * Extract base domain from normalized URL.
+     *
+     * @param string $normalized_url
+     * @return string
+     */
+    private static function get_base_domain($normalized_url) {
+        $parts = explode('/', $normalized_url, 2);
+        return $parts[0] ?? '';
     }
 }

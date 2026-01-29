@@ -27,7 +27,7 @@ class RE_Access_Database {
             id bigint(20) NOT NULL AUTO_INCREMENT,
             site_name varchar(255) NOT NULL,
             site_url varchar(512) NOT NULL,
-            site_rss varchar(512) DEFAULT '',
+            rss_url varchar(512) DEFAULT '',
             status varchar(20) DEFAULT 'pending',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -167,6 +167,43 @@ class RE_Access_Database {
         $normalized = $host . $path;
 
         return $normalized;
+    }
+
+    /**
+     * Sanitize a URL for storage/display while removing query strings and fragments.
+     *
+     * Keeps scheme/host/path for display, but removes query/fragment and trailing slash.
+     *
+     * @param string $url
+     * @return string
+     */
+    public static function sanitize_url_for_storage($url) {
+        if (empty($url) || !is_string($url)) {
+            return '';
+        }
+
+        $sanitized = esc_url_raw($url);
+        if (empty($sanitized)) {
+            return '';
+        }
+
+        $parts = wp_parse_url($sanitized);
+        if (empty($parts['scheme']) || empty($parts['host'])) {
+            return '';
+        }
+
+        $path = isset($parts['path']) ? $parts['path'] : '';
+        $path = rtrim($path, '/');
+
+        $rebuilt = $parts['scheme'] . '://' . $parts['host'];
+        if (isset($parts['port'])) {
+            $rebuilt .= ':' . (int) $parts['port'];
+        }
+        if ($path !== '') {
+            $rebuilt .= $path;
+        }
+
+        return $rebuilt;
     }
 
     /**

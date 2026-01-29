@@ -48,6 +48,7 @@ $maybe_require('includes/class-re-access-database.php');
 $maybe_require('includes/class-re-access-tracker.php');
 $maybe_require('includes/class-re-access-notices.php');
 $maybe_require('admin/class-re-access-dashboard.php');
+$maybe_require('admin/class-re-access-sites.php');
 $maybe_require('admin/class-re-access-ranking.php');
 $maybe_require('admin/class-re-access-link-slots.php');
 $maybe_require('admin/class-re-access-rss-slots.php');
@@ -126,6 +127,10 @@ function re_access_init() {
     if (class_exists('RE_Access_RSS_Slots')) {
         add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
     }
+
+    if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'init')) {
+        RE_Access_Sites::init();
+    }
     
 }
 add_action('init', 're_access_init');
@@ -171,6 +176,17 @@ function re_access_admin_menu() {
             'manage_options',
             're-access-ranking',
             ['RE_Access_Ranking', 'render']
+        );
+    }
+
+    if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('Sites', 're-access'),
+            __('Sites', 're-access'),
+            'manage_options',
+            're-access-sites',
+            ['RE_Access_Sites', 'render']
         );
     }
 

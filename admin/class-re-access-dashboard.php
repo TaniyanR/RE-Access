@@ -52,8 +52,8 @@ class RE_Access_Dashboard {
             <!-- KPI Display -->
             <div class="kpi-container" style="display: flex; gap: 20px; margin: 20px 0;">
                 <div class="kpi-box" style="flex: 1; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 5px;">
-                    <h3 style="margin: 0 0 10px; color: #666;"><?php esc_html_e('Total IN', 're-access'); ?></h3>
-                    <p style="font-size: 32px; font-weight: bold; margin: 0;"><?php echo esc_html(number_format($kpis['total_in'])); ?></p>
+                    <h3 style="margin: 0 0 10px; color: #666;"><?php esc_html_e('Total Access', 're-access'); ?></h3>
+                    <p style="font-size: 32px; font-weight: bold; margin: 0;"><?php echo esc_html(number_format($kpis['total_access'])); ?></p>
                 </div>
                 <div class="kpi-box" style="flex: 1; background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 5px;">
                     <h3 style="margin: 0 0 10px; color: #666;"><?php esc_html_e('Unique Users', 're-access'); ?></h3>
@@ -93,10 +93,10 @@ class RE_Access_Dashboard {
                             <?php foreach ($data as $row): ?>
                                 <tr>
                                     <td><?php echo esc_html($row->date); ?></td>
-                                    <td><?php echo esc_html(number_format($row->in_count)); ?></td>
-                                    <td><?php echo esc_html(number_format($row->out_count)); ?></td>
-                                    <td><?php echo esc_html(number_format($row->pv_count)); ?></td>
-                                    <td><?php echo esc_html(number_format($row->uu_count)); ?></td>
+                                    <td><?php echo esc_html(number_format($row->total)); ?></td>
+                                    <td><?php echo esc_html(number_format($row->out)); ?></td>
+                                    <td><?php echo esc_html(number_format($row->pv)); ?></td>
+                                    <td><?php echo esc_html(number_format($row->uu)); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php else: ?>
@@ -116,10 +116,10 @@ class RE_Access_Dashboard {
             
             var data = <?php echo json_encode($data); ?>;
             var labels = data.map(function(item) { return item.date; });
-            var inData = data.map(function(item) { return item.in_count; });
-            var outData = data.map(function(item) { return item.out_count; });
-            var pvData = data.map(function(item) { return item.pv_count; });
-            var uuData = data.map(function(item) { return item.uu_count; });
+            var inData = data.map(function(item) { return item.total; });
+            var outData = data.map(function(item) { return item.out; });
+            var pvData = data.map(function(item) { return item.pv; });
+            var uuData = data.map(function(item) { return item.uu; });
             
             new Chart(ctx, {
                 type: 'line',
@@ -173,16 +173,49 @@ class RE_Access_Dashboard {
     private static function get_access_data($days) {
         global $wpdb;
         $table = $wpdb->prefix . 'reaccess_daily';
-        
+
+        $days = max(1, (int) $days);
+        $interval = $days - 1;
+
         $results = $wpdb->get_results($wpdb->prepare(
-            "SELECT date, in_count, out_count, pv_count, uu_count 
-             FROM $table 
+            "SELECT date, total, uu, pv, `out`
+             FROM $table
              WHERE date >= DATE_SUB(CURDATE(), INTERVAL %d DAY)
              ORDER BY date ASC",
-            $days
+            $interval
         ));
-        
-        return $results ?: [];
+
+        $indexed = [];
+        foreach ($results as $row) {
+            $row->total = (int) $row->total;
+            $row->uu = (int) $row->uu;
+            $row->pv = (int) $row->pv;
+            $row->out = (int) $row->out;
+            $indexed[$row->date] = $row;
+        }
+
+        $dates = self::get_date_range($days);
+        $data = [];
+
+        foreach ($dates as $date) {
+            $row = $indexed[$date] ?? (object) [
+                'date' => $date,
+                'total' => 0,
+                'uu' => 0,
+                'pv' => 0,
+                'out' => 0,
+            ];
+
+            $row->comparisons = [
+                'prev_day' => self::get_comparison_row($indexed, $date, 'day'),
+                'prev_week' => self::get_comparison_row($indexed, $date, 'week'),
+                'prev_month' => self::get_comparison_row($indexed, $date, 'month'),
+            ];
+
+            $data[] = $row;
+        }
+
+        return $data;
     }
     
     /**
@@ -191,23 +224,71 @@ class RE_Access_Dashboard {
     private static function get_kpis($days) {
         global $wpdb;
         $table = $wpdb->prefix . 'reaccess_daily';
-        
+
+        $days = max(1, (int) $days);
+        $interval = $days - 1;
+
         $result = $wpdb->get_row($wpdb->prepare(
-            "SELECT 
-                SUM(in_count) as total_in,
-                SUM(out_count) as total_out,
-                SUM(pv_count) as total_pv,
-                SUM(uu_count) as total_uu
-             FROM $table 
+            "SELECT
+                SUM(total) as total_access,
+                SUM(`out`) as total_out,
+                SUM(pv) as total_pv,
+                SUM(uu) as total_uu
+             FROM $table
              WHERE date >= DATE_SUB(CURDATE(), INTERVAL %d DAY)",
-            $days
+            $interval
         ));
-        
+
         return [
-            'total_in' => $result ? (int)$result->total_in : 0,
-            'total_out' => $result ? (int)$result->total_out : 0,
-            'total_pv' => $result ? (int)$result->total_pv : 0,
-            'total_uu' => $result ? (int)$result->total_uu : 0,
+            'total_access' => $result ? (int) $result->total_access : 0,
+            'total_out' => $result ? (int) $result->total_out : 0,
+            'total_pv' => $result ? (int) $result->total_pv : 0,
+            'total_uu' => $result ? (int) $result->total_uu : 0,
+        ];
+    }
+
+    /**
+     * Build date range for the period.
+     *
+     * @param int $days
+     * @return array
+     */
+    private static function get_date_range($days) {
+        $dates = [];
+        $today = current_time('Y-m-d');
+
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $dates[] = date('Y-m-d', strtotime($today . ' -' . $i . ' days'));
+        }
+
+        return $dates;
+    }
+
+    /**
+     * Get comparison row for previous day/week/month.
+     *
+     * @param array $indexed
+     * @param string $date
+     * @param string $mode
+     * @return array
+     */
+    private static function get_comparison_row($indexed, $date, $mode) {
+        $offset = 'day' === $mode ? '-1 day' : ('week' === $mode ? '-7 days' : '-1 month');
+        $compare_date = date('Y-m-d', strtotime($date . ' ' . $offset));
+
+        $row = $indexed[$compare_date] ?? (object) [
+            'total' => 0,
+            'uu' => 0,
+            'pv' => 0,
+            'out' => 0,
+        ];
+
+        return [
+            'date' => $compare_date,
+            'total' => (int) $row->total,
+            'uu' => (int) $row->uu,
+            'pv' => (int) $row->pv,
+            'out' => (int) $row->out,
         ];
     }
 }
