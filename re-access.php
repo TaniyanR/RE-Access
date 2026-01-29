@@ -47,7 +47,6 @@ $maybe_require = function (string $path) {
 $maybe_require('includes/class-re-access-database.php');
 $maybe_require('includes/class-re-access-tracker.php');
 $maybe_require('includes/class-re-access-notices.php');
-$maybe_require('includes/class-re-access-frontend-registration.php');
 $maybe_require('admin/class-re-access-dashboard.php');
 $maybe_require('admin/class-re-access-sites.php');
 $maybe_require('admin/class-re-access-ranking.php');
@@ -116,11 +115,6 @@ function re_access_init() {
         RE_Access_Sites::init();
     }
     
-    // Initialize frontend registration if available
-    if (class_exists('RE_Access_Frontend_Registration') && method_exists('RE_Access_Frontend_Registration', 'init')) {
-        RE_Access_Frontend_Registration::init();
-    }
-    
     // Register shortcodes only when their handler classes exist
     if (class_exists('RE_Access_Notices')) {
         add_shortcode('reaccess_notice', ['RE_Access_Notices', 'shortcode_notice']);
@@ -139,9 +133,6 @@ function re_access_init() {
         add_shortcode('reaccess_rss_slot', ['RE_Access_RSS_Slots', 'shortcode_rss_slot']);
     }
     
-    if (class_exists('RE_Access_Frontend_Registration')) {
-        add_shortcode('reaccess_register', ['RE_Access_Frontend_Registration', 'shortcode_register']);
-    }
 }
 add_action('init', 're_access_init');
 
@@ -151,7 +142,7 @@ add_action('init', 're_access_init');
 function re_access_admin_menu() {
     global $menu;
 
-    $menu_position = null;
+    $menu_position = 79;
     if (is_array($menu)) {
         foreach ($menu as $index => $item) {
             if (isset($item[2]) && $item[2] === 'options-general.php') {
@@ -256,8 +247,8 @@ function re_access_init_update_checker() {
         $github_url = 'https://github.com/TaniyanR/RE-Access';
     }
 
-    if (class_exists('YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
-        $updateChecker = YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
+    if (class_exists('\\YahnisElsts\\PluginUpdateChecker\\v5p6\\PucFactory')) {
+        $updateChecker = \YahnisElsts\PluginUpdateChecker\v5p6\PucFactory::buildUpdateChecker(
             $github_url,
             __FILE__,
             're-access'
