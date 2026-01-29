@@ -44,6 +44,7 @@ class RE_Access_RSS_Slots {
                 <p><strong><?php esc_html_e('Important Note:', 're-access'); ?></strong></p>
                 <p><?php esc_html_e('RSS feeds are fetched from external sites. Heavy usage may impact your site performance. The plugin uses caching to minimize load, but please monitor your site\'s performance when using multiple RSS slots.', 're-access'); ?></p>
                 <p><?php esc_html_e('Cached RSS feeds are automatically refreshed based on the cache duration setting.', 're-access'); ?></p>
+                <p><?php esc_html_e('If an RSS item has no image, no substitute image is shown and only text is displayed.', 're-access'); ?></p>
             </div>
             
             <!-- Slot Tabs -->
@@ -147,9 +148,6 @@ class RE_Access_RSS_Slots {
      * Get slot data
      */
     private static function get_slot_data($slot) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reaccess_settings';
-        
         $defaults = [
             'description' => '',
             'site_id' => 0,
@@ -200,17 +198,13 @@ class RE_Access_RSS_Slots {
     margin: 0;
 }'
         ];
-        
-        $saved = $wpdb->get_row($wpdb->prepare(
-            "SELECT setting_value FROM $table WHERE setting_key = %s",
-            'rss_slot_' . $slot
-        ));
-        
-        if ($saved) {
-            return array_merge($defaults, json_decode($saved->setting_value, true));
+
+        $saved = get_option('re_access_rss_slot_' . $slot, []);
+        if (!is_array($saved)) {
+            $saved = [];
         }
-        
-        return $defaults;
+
+        return array_merge($defaults, $saved);
     }
     
     /**
@@ -239,9 +233,6 @@ class RE_Access_RSS_Slots {
      * Save slot
      */
     private static function save_slot() {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reaccess_settings';
-        
         $slot = (int)$_POST['slot_number'];
         
         $data = [
@@ -252,14 +243,8 @@ class RE_Access_RSS_Slots {
             'html_template' => wp_kses_post($_POST['html_template']),
             'css_template' => self::sanitize_css($_POST['css_template'])
         ];
-        
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (setting_key, setting_value) VALUES (%s, %s) 
-             ON DUPLICATE KEY UPDATE setting_value = %s",
-            'rss_slot_' . $slot,
-            json_encode($data),
-            json_encode($data)
-        ));
+
+        update_option('re_access_rss_slot_' . $slot, $data);
     }
     
     /**
@@ -325,12 +310,12 @@ class RE_Access_RSS_Slots {
             $site_id
         ));
         
-        if (!$site || empty($site->site_rss)) {
+        if (!$site || empty($site->rss_url)) {
             return '<p>' . esc_html__('RSS feed not available', 're-access') . '</p>';
         }
         
         // Fetch RSS feed with caching
-        $feed_items = self::fetch_rss_feed($site->site_rss, $slot_data['item_count'], $slot_data['cache_duration']);
+        $feed_items = self::fetch_rss_feed($site->rss_url, $slot_data['item_count'], $slot_data['cache_duration']);
         
         if (empty($feed_items)) {
             return '<p>' . esc_html__('No RSS items available', 're-access') . '</p>';
@@ -355,7 +340,11 @@ class RE_Access_RSS_Slots {
             
             $html = str_replace('[rr_site_name]', esc_html($site->site_name), $html);
             $html = str_replace('[rr_item_title]', esc_html($item['title']), $html);
-            $html = str_replace('[rr_item_url]', esc_url($item['url']), $html);
+            $item_url = $item['url'];
+            if (class_exists('RE_Access_Tracker')) {
+                $item_url = RE_Access_Tracker::get_outgoing_url($item['url']);
+            }
+            $html = str_replace('[rr_item_url]', esc_url($item_url), $html);
             $html = str_replace('[rr_item_date]', esc_html($item['date']), $html);
             
             $output .= $html;

@@ -21,9 +21,8 @@ class RE_Access_Notices {
         $table = $wpdb->prefix . 'reaccess_notice';
         
         $wpdb->insert($table, [
-            'notice_type' => sanitize_text_field($type),
-            'notice_content' => sanitize_text_field($content),
-            'site_id' => $site_id ? (int)$site_id : null
+            'type' => sanitize_text_field($type),
+            'message' => sanitize_text_field($content),
         ]);
         
         // Clean up old notices
@@ -103,7 +102,7 @@ class RE_Access_Notices {
         foreach ($notices as $notice) {
             $output .= '<li>';
             $output .= '<span class="notice-date">' . esc_html(date('Y-m-d H:i', strtotime($notice->created_at))) . '</span> ';
-            $output .= '<span class="notice-content">' . esc_html($notice->notice_content) . '</span>';
+            $output .= '<span class="notice-content">' . esc_html($notice->message) . '</span>';
             $output .= '</li>';
         }
         $output .= '</ul>';
@@ -124,7 +123,7 @@ class RE_Access_Notices {
         
         $output = '<div class="re-access-notice-latest">';
         $output .= '<span class="notice-date">' . esc_html(date('Y-m-d H:i', strtotime($notice->created_at))) . '</span> ';
-        $output .= '<span class="notice-content">' . esc_html($notice->notice_content) . '</span>';
+        $output .= '<span class="notice-content">' . esc_html($notice->message) . '</span>';
         $output .= '</div>';
         
         return apply_filters('re_access_notice_latest_output', $output, $notice);

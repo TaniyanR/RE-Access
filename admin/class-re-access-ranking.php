@@ -157,14 +157,16 @@ class RE_Access_Ranking {
         global $wpdb;
         $sites_table = $wpdb->prefix . 'reaccess_sites';
         $tracking_table = $wpdb->prefix . 'reaccess_site_daily';
-        
+        $period = max(1, (int) $period);
+        $interval = $period - 1;
+
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT 
                 s.id,
                 s.site_name,
                 s.site_url,
-                SUM(t.in_count) as total_in,
-                SUM(t.out_count) as total_out
+                SUM(t.`in`) as total_in,
+                SUM(t.`out`) as total_out
              FROM $sites_table s
              LEFT JOIN $tracking_table t ON s.id = t.site_id
              WHERE s.status = 'approved'
@@ -172,7 +174,7 @@ class RE_Access_Ranking {
              GROUP BY s.id
              ORDER BY total_in DESC
              LIMIT %d",
-            $period,
+            $interval,
             $limit
         ));
         
@@ -183,6 +185,10 @@ class RE_Access_Ranking {
      * Render ranking table
      */
     public static function render_ranking_table($ranking, $settings) {
+        if (!$settings['show_in'] && !$settings['show_out']) {
+            return '';
+        }
+
         $output = '<table class="re-access-ranking-table" style="width: ' . esc_attr($settings['width']) . '; border-collapse: collapse;">';
         $output .= '<thead>';
         $output .= '<tr style="background: ' . esc_attr($settings['head_bg']) . '; color: ' . esc_attr($settings['text']) . ';">';
@@ -203,9 +209,14 @@ class RE_Access_Ranking {
         if (!empty($ranking)) {
             $rank = 1;
             foreach ($ranking as $site) {
+                $site_url = $site->site_url;
+                if (class_exists('RE_Access_Tracker')) {
+                    $site_url = RE_Access_Tracker::get_outgoing_url($site->site_url);
+                }
+
                 $output .= '<tr>';
                 $output .= '<td style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . $rank . '</td>';
-                $output .= '<td style="padding: 10px; border: 1px solid #ddd;"><a href="' . esc_url($site->site_url) . '" target="_blank" style="color: ' . esc_attr($settings['accent']) . ';">' . esc_html($site->site_name) . '</a></td>';
+                $output .= '<td style="padding: 10px; border: 1px solid #ddd;"><a href="' . esc_url($site_url) . '" target="_blank" style="color: ' . esc_attr($settings['accent']) . ';">' . esc_html($site->site_name) . '</a></td>';
                 
                 if ($settings['show_in']) {
                     $output .= '<td style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html(number_format($site->total_in)) . '</td>';
@@ -232,9 +243,6 @@ class RE_Access_Ranking {
      * Get settings
      */
     private static function get_settings() {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reaccess_settings';
-        
         $defaults = [
             'period' => '7',
             'limit' => '10',
@@ -247,23 +255,19 @@ class RE_Access_Ranking {
             'html_template' => '<div class="ranking-list">[ranking_items]</div>',
             'css_template' => '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }'
         ];
-        
-        $saved = $wpdb->get_row($wpdb->prepare("SELECT setting_value FROM $table WHERE setting_key = %s", 'ranking_settings'));
-        
-        if ($saved) {
-            return array_merge($defaults, json_decode($saved->setting_value, true));
+
+        $saved = get_option('re_access_ranking_settings', []);
+        if (!is_array($saved)) {
+            $saved = [];
         }
-        
-        return $defaults;
+
+        return array_merge($defaults, $saved);
     }
     
     /**
      * Save settings
      */
     private static function save_settings() {
-        global $wpdb;
-        $table = $wpdb->prefix . 'reaccess_settings';
-        
         $settings = [
             'period' => sanitize_text_field($_POST['period']),
             'limit' => (int)$_POST['limit'],
@@ -276,30 +280,33 @@ class RE_Access_Ranking {
             'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
             'css_template' => isset($_POST['css_template']) ? self::sanitize_css($_POST['css_template']) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
-        
-        $wpdb->query($wpdb->prepare(
-            "INSERT INTO $table (setting_key, setting_value) VALUES (%s, %s) 
-             ON DUPLICATE KEY UPDATE setting_value = %s",
-            'ranking_settings',
-            json_encode($settings),
-            json_encode($settings)
-        ));
+
+        update_option('re_access_ranking_settings', $settings);
     }
     
     /**
      * Render ranking with templates
      */
     private static function render_ranking_with_templates($ranking, $settings) {
+        if (!$settings['show_in'] && !$settings['show_out']) {
+            return '';
+        }
+
         // Generate ranking items HTML
         $items_html = '';
         
         if (!empty($ranking)) {
             $rank = 1;
             foreach ($ranking as $site) {
+                $site_url = $site->site_url;
+                if (class_exists('RE_Access_Tracker')) {
+                    $site_url = RE_Access_Tracker::get_outgoing_url($site->site_url);
+                }
+
                 // Create individual item HTML with generic wrapper
                 $item = '<div class="re-access-ranking-item" data-rank="' . esc_attr($rank) . '">';
                 $item .= '<span class="rank">' . esc_html($rank) . '</span> ';
-                $item .= '<a href="' . esc_url($site->site_url) . '" target="_blank" style="color: ' . esc_attr($settings['accent']) . ';">';
+                $item .= '<a href="' . esc_url($site_url) . '" target="_blank" style="color: ' . esc_attr($settings['accent']) . ';">';
                 $item .= esc_html($site->site_name);
                 $item .= '</a>';
                 

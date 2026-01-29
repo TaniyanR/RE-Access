@@ -10,26 +10,13 @@ if (!defined('WPINC')) {
 }
 
 class RE_Access_Sites {
-    
-    /**
-     * Normalize URL by removing trailing slashes and ensuring proper format
-     */
-    private static function normalize_url($url) {
-        if (empty($url)) {
-            return '';
-        }
-        $url = esc_url_raw($url);
-        $url = untrailingslashit($url);
-        return $url;
-    }
-    
+
     /**
      * Initialize
      */
     public static function init() {
         add_action('admin_post_re_access_add_site', [__CLASS__, 'handle_add_site']);
         add_action('admin_post_re_access_approve_site', [__CLASS__, 'handle_approve_site']);
-        add_action('admin_post_re_access_reject_site', [__CLASS__, 'handle_reject_site']);
         add_action('admin_post_re_access_delete_site', [__CLASS__, 'handle_delete_site']);
         add_action('admin_post_re_access_update_site', [__CLASS__, 'handle_update_site']);
     }
@@ -40,9 +27,9 @@ class RE_Access_Sites {
     public static function render() {
         global $wpdb;
         
-        // Get current status tab (approved, pending, or rejected)
+        // Get current status tab (approved or pending)
         $current_status = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : 'approved';
-        if (!in_array($current_status, ['approved', 'pending', 'rejected'], true)) {
+        if (!in_array($current_status, ['approved', 'pending'], true)) {
             $current_status = 'approved';
         }
         
@@ -69,14 +56,12 @@ class RE_Access_Sites {
         // Get counts for tabs
         $approved_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'approved'));
         $pending_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'pending'));
-        $rejected_count = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $sites_table WHERE status = %s", 'rejected'));
-        
         // Handle edit mode
         $edit_site = null;
-        if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
+        if (isset($_GET['action'], $_GET['site_id']) && $_GET['action'] === 'edit' && is_numeric($_GET['site_id'])) {
             $edit_site = $wpdb->get_row($wpdb->prepare(
                 "SELECT * FROM $sites_table WHERE id = %d",
-                (int)$_GET['edit']
+                (int)$_GET['site_id']
             ));
         }
         
@@ -91,7 +76,6 @@ class RE_Access_Sites {
                 $messages = [
                     'added' => __('Site added successfully and is pending approval.', 're-access'),
                     'approved' => __('Site approved successfully.', 're-access'),
-                    'rejected' => __('Site rejected successfully.', 're-access'),
                     'deleted' => __('Site deleted successfully.', 're-access'),
                     'updated' => __('Site updated successfully.', 're-access'),
                 ];
@@ -109,7 +93,7 @@ class RE_Access_Sites {
                         <input type="hidden" name="action" value="re_access_update_site">
                         <input type="hidden" name="site_id" value="<?php echo esc_attr($edit_site->id); ?>">
                         <?php wp_nonce_field('re_access_update_site'); ?>
-                        
+
                         <table class="form-table">
                             <tr>
                                 <th><?php esc_html_e('Site Name', 're-access'); ?></th>
@@ -121,31 +105,13 @@ class RE_Access_Sites {
                             </tr>
                             <tr>
                                 <th><?php esc_html_e('RSS URL', 're-access'); ?></th>
-                                <td><input type="url" name="site_rss" value="<?php echo esc_attr($edit_site->site_rss); ?>" class="regular-text"></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e('Description', 're-access'); ?></th>
-                                <td><textarea name="site_desc" class="large-text" rows="3"><?php echo esc_textarea($edit_site->site_desc); ?></textarea></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e('Link Slot', 're-access'); ?></th>
-                                <td>
-                                    <select name="link_slot">
-                                        <option value="" <?php selected($edit_site->link_slot, null); ?>><?php esc_html_e('None', 're-access'); ?></option>
-                                        <option value="1" <?php selected($edit_site->link_slot, 1); ?>><?php esc_html_e('Slot 1', 're-access'); ?></option>
-                                        <option value="2" <?php selected($edit_site->link_slot, 2); ?>><?php esc_html_e('Slot 2', 're-access'); ?></option>
-                                        <option value="3" <?php selected($edit_site->link_slot, 3); ?>><?php esc_html_e('Slot 3', 're-access'); ?></option>
-                                        <option value="4" <?php selected($edit_site->link_slot, 4); ?>><?php esc_html_e('Slot 4', 're-access'); ?></option>
-                                        <option value="5" <?php selected($edit_site->link_slot, 5); ?>><?php esc_html_e('Slot 5', 're-access'); ?></option>
-                                    </select>
-                                    <p class="description"><?php esc_html_e('Assign this site to a link slot for display via shortcode.', 're-access'); ?></p>
-                                </td>
+                                <td><input type="url" name="rss_url" value="<?php echo esc_attr($edit_site->rss_url); ?>" class="regular-text"></td>
                             </tr>
                         </table>
-                        
+
                         <p class="submit">
                             <input type="submit" class="button button-primary" value="<?php esc_attr_e('Update Site', 're-access'); ?>">
-                            <a href="?page=re-access-sites" class="button"><?php esc_html_e('Cancel', 're-access'); ?></a>
+                            <a href="?page=re-access-sites&status=<?php echo esc_attr($current_status); ?>" class="button"><?php esc_html_e('Cancel', 're-access'); ?></a>
                         </p>
                     </form>
                 </div>
@@ -168,25 +134,7 @@ class RE_Access_Sites {
                             </tr>
                             <tr>
                                 <th><?php esc_html_e('RSS URL', 're-access'); ?></th>
-                                <td><input type="url" name="site_rss" class="regular-text"></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e('Description', 're-access'); ?></th>
-                                <td><textarea name="site_desc" class="large-text" rows="3"></textarea></td>
-                            </tr>
-                            <tr>
-                                <th><?php esc_html_e('Link Slot', 're-access'); ?></th>
-                                <td>
-                                    <select name="link_slot">
-                                        <option value=""><?php esc_html_e('None', 're-access'); ?></option>
-                                        <option value="1"><?php esc_html_e('Slot 1', 're-access'); ?></option>
-                                        <option value="2"><?php esc_html_e('Slot 2', 're-access'); ?></option>
-                                        <option value="3"><?php esc_html_e('Slot 3', 're-access'); ?></option>
-                                        <option value="4"><?php esc_html_e('Slot 4', 're-access'); ?></option>
-                                        <option value="5"><?php esc_html_e('Slot 5', 're-access'); ?></option>
-                                    </select>
-                                    <p class="description"><?php esc_html_e('Assign this site to a link slot for display via shortcode.', 're-access'); ?></p>
-                                </td>
+                                <td><input type="url" name="rss_url" class="regular-text"></td>
                             </tr>
                         </table>
                         
@@ -206,28 +154,17 @@ class RE_Access_Sites {
                        class="nav-tab <?php echo $current_status === 'pending' ? 'nav-tab-active' : ''; ?>">
                         <?php printf(esc_html__('Pending (%d)', 're-access'), $pending_count); ?>
                     </a>
-                    <a href="?page=re-access-sites&status=rejected" 
-                       class="nav-tab <?php echo $current_status === 'rejected' ? 'nav-tab-active' : ''; ?>">
-                        <?php printf(esc_html__('Rejected (%d)', 're-access'), $rejected_count); ?>
-                    </a>
                 </div>
                 
-                <!-- Pagination -->
+                <!-- Pagination Tabs -->
                 <?php if ($total_pages > 1): ?>
-                    <div class="tablenav" style="margin: 10px 0;">
-                        <div class="tablenav-pages">
-                            <?php
-                            echo paginate_links([
-                                'base' => add_query_arg('paged', '%#%'),
-                                'format' => '',
-                                'prev_text' => __('&laquo; Previous', 're-access'),
-                                'next_text' => __('Next &raquo;', 're-access'),
-                                'total' => $total_pages,
-                                'current' => $current_page,
-                                'add_args' => ['status' => $current_status]
-                            ]);
-                            ?>
-                        </div>
+                    <div class="nav-tab-wrapper" style="margin: 10px 0;">
+                        <?php for ($page = 1; $page <= $total_pages; $page++): ?>
+                            <a href="<?php echo esc_url(add_query_arg(['paged' => $page, 'status' => $current_status])); ?>"
+                               class="nav-tab <?php echo $current_page === $page ? 'nav-tab-active' : ''; ?>">
+                                <?php echo esc_html($page); ?>
+                            </a>
+                        <?php endfor; ?>
                     </div>
                 <?php endif; ?>
                 
@@ -239,8 +176,8 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('Site Name', 're-access'); ?></th>
                                 <th><?php esc_html_e('URL', 're-access'); ?></th>
+                                <th><?php esc_html_e('RSS', 're-access'); ?></th>
                                 <th><?php esc_html_e('Status', 're-access'); ?></th>
-                                <th><?php esc_html_e('Link Slot', 're-access'); ?></th>
                                 <th><?php esc_html_e('Created', 're-access'); ?></th>
                                 <th><?php esc_html_e('Actions', 're-access'); ?></th>
                             </tr>
@@ -252,26 +189,22 @@ class RE_Access_Sites {
                                         <td><?php echo esc_html($site->site_name); ?></td>
                                         <td><a href="<?php echo esc_url($site->site_url); ?>" target="_blank"><?php echo esc_html($site->site_url); ?></a></td>
                                         <td>
+                                            <?php if (!empty($site->rss_url)) : ?>
+                                                <a href="<?php echo esc_url($site->rss_url); ?>" target="_blank"><?php echo esc_html($site->rss_url); ?></a>
+                                            <?php else : ?>
+                                                —
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
                                             <?php if ($site->status === 'pending'): ?>
                                                 <span style="color: orange;">⏳ <?php esc_html_e('Pending', 're-access'); ?></span>
-                                            <?php elseif ($site->status === 'rejected'): ?>
-                                                <span style="color: red;">✗ <?php esc_html_e('Rejected', 're-access'); ?></span>
                                             <?php else: ?>
                                                 <span style="color: green;">✓ <?php esc_html_e('Approved', 're-access'); ?></span>
                                             <?php endif; ?>
                                         </td>
-                                        <td>
-                                            <?php 
-                                            if (!empty($site->link_slot)) {
-                                                printf(esc_html__('Slot %d', 're-access'), $site->link_slot);
-                                            } else {
-                                                echo '—';
-                                            }
-                                            ?>
-                                        </td>
                                         <td><?php echo esc_html($site->created_at); ?></td>
                                         <td>
-                                            <a href="?page=re-access-sites&edit=<?php echo esc_attr($site->id); ?>" class="button button-small">
+                                            <a href="?page=re-access-sites&action=edit&site_id=<?php echo esc_attr($site->id); ?>&status=<?php echo esc_attr($current_status); ?>" class="button button-small">
                                                 <?php esc_html_e('Edit', 're-access'); ?>
                                             </a>
                                             
@@ -281,13 +214,6 @@ class RE_Access_Sites {
                                                     <input type="hidden" name="site_id" value="<?php echo esc_attr($site->id); ?>">
                                                     <?php wp_nonce_field('re_access_approve_site'); ?>
                                                     <input type="submit" class="button button-small" value="<?php esc_attr_e('Approve', 're-access'); ?>">
-                                                </form>
-                                                
-                                                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display: inline;">
-                                                    <input type="hidden" name="action" value="re_access_reject_site">
-                                                    <input type="hidden" name="site_id" value="<?php echo esc_attr($site->id); ?>">
-                                                    <?php wp_nonce_field('re_access_reject_site'); ?>
-                                                    <input type="submit" class="button button-small" value="<?php esc_attr_e('Reject', 're-access'); ?>">
                                                 </form>
                                             <?php endif; ?>
                                             
@@ -327,26 +253,14 @@ class RE_Access_Sites {
         global $wpdb;
         $table = $wpdb->prefix . 'reaccess_sites';
         
-        $site_url = self::normalize_url($_POST['site_url']);
-        $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
-        
-        // Process link_slot value
-        $link_slot = null;
-        if (isset($_POST['link_slot']) && $_POST['link_slot'] !== '') {
-            $link_slot = (int)$_POST['link_slot'];
-            // Validate link_slot is between 1 and 5
-            if ($link_slot < 1 || $link_slot > 5) {
-                $link_slot = null;
-            }
-        }
+        $site_url = RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url']));
+        $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
         
         $wpdb->insert($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
             'site_url' => $site_url,
-            'site_rss' => $site_rss,
-            'site_desc' => sanitize_textarea_field($_POST['site_desc'] ?? ''),
-            'status' => 'pending',
-            'link_slot' => $link_slot
+            'rss_url' => $rss_url,
+            'status' => 'pending'
         ]);
         
         // Create notice
@@ -387,44 +301,6 @@ class RE_Access_Sites {
         ), $site_id);
         
         wp_redirect(admin_url('admin.php?page=re-access-sites&status=approved&message=approved'));
-        exit;
-    }
-    
-    /**
-     * Handle reject site
-     */
-    public static function handle_reject_site() {
-        check_admin_referer('re_access_reject_site');
-        
-        if (!current_user_can('manage_options')) {
-            wp_die('Unauthorized');
-        }
-        
-        global $wpdb;
-        $table = $wpdb->prefix . 'reaccess_sites';
-        $site_id = (int)$_POST['site_id'];
-        
-        $site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
-        
-        if (!$site) {
-            wp_die(__('Site not found.', 're-access'));
-        }
-        
-        $result = $wpdb->update($table, ['status' => 'rejected'], ['id' => $site_id]);
-        
-        if ($result === false) {
-            wp_die(__('Database error: Failed to reject site.', 're-access'));
-        }
-        
-        // Create notice
-        if (class_exists('RE_Access_Notices')) {
-            RE_Access_Notices::add_notice('site_rejected', sprintf(
-                __('Site rejected: %s', 're-access'),
-                $site->site_name
-            ), $site_id);
-        }
-        
-        wp_redirect(admin_url('admin.php?page=re-access-sites&status=rejected&message=rejected'));
         exit;
     }
     
@@ -478,25 +354,13 @@ class RE_Access_Sites {
         $current_site = $wpdb->get_row($wpdb->prepare("SELECT status FROM $table WHERE id = %d", $site_id));
         $site_status = $current_site ? $current_site->status : 'approved';
         
-        $site_url = self::normalize_url($_POST['site_url']);
-        $site_rss = isset($_POST['site_rss']) ? self::normalize_url($_POST['site_rss']) : '';
-        
-        // Process link_slot value
-        $link_slot = null;
-        if (isset($_POST['link_slot']) && $_POST['link_slot'] !== '') {
-            $link_slot = (int)$_POST['link_slot'];
-            // Validate link_slot is between 1 and 5
-            if ($link_slot < 1 || $link_slot > 5) {
-                $link_slot = null;
-            }
-        }
+        $site_url = RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url']));
+        $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
         
         $wpdb->update($table, [
             'site_name' => sanitize_text_field($_POST['site_name']),
             'site_url' => $site_url,
-            'site_rss' => $site_rss,
-            'site_desc' => sanitize_textarea_field($_POST['site_desc'] ?? ''),
-            'link_slot' => $link_slot
+            'rss_url' => $rss_url
         ], ['id' => $site_id]);
         
         // Clear approved sites cache
