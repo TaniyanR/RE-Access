@@ -48,7 +48,6 @@ $maybe_require('includes/class-re-access-database.php');
 $maybe_require('includes/class-re-access-tracker.php');
 $maybe_require('includes/class-re-access-notices.php');
 $maybe_require('admin/class-re-access-dashboard.php');
-$maybe_require('admin/class-re-access-sites.php');
 $maybe_require('admin/class-re-access-ranking.php');
 $maybe_require('admin/class-re-access-link-slots.php');
 $maybe_require('admin/class-re-access-rss-slots.php');
@@ -110,11 +109,6 @@ function re_access_init() {
         RE_Access_Tracker::init();
     }
 
-    // Initialize site management if available
-    if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'init')) {
-        RE_Access_Sites::init();
-    }
-    
     // Register shortcodes only when their handler classes exist
     if (class_exists('RE_Access_Notices')) {
         add_shortcode('reaccess_notice', ['RE_Access_Notices', 'shortcode_notice']);
@@ -168,17 +162,6 @@ function re_access_admin_menu() {
         'dashicons-chart-line',
         $menu_position
     );
-
-    if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'render')) {
-        add_submenu_page(
-            're-access',
-            __('Site Registration', 're-access'),
-            __('Sites', 're-access'),
-            'manage_options',
-            're-access-sites',
-            ['RE_Access_Sites', 'render']
-        );
-    }
 
     if (class_exists('RE_Access_Ranking') && method_exists('RE_Access_Ranking', 'render')) {
         add_submenu_page(
