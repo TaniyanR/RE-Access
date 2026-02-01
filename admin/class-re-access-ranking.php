@@ -247,7 +247,7 @@ class RE_Access_Ranking {
             }
         } else {
             $colspan = 2 + ($settings['show_in'] ? 1 : 0) + ($settings['show_out'] ? 1 : 0);
-            $output .= '<tr><td colspan="' . $colspan . '" style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html__('No data available', 're-access') . '</td></tr>';
+            $output .= '<tr><td colspan="' . $colspan . '" style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html__('No data available', 're-access') . '<br><span class="description">' . esc_html__('計測データがまだ無いため表示されません。アクセス計測後に反映されます。', 're-access') . '</span></td></tr>';
         }
         
         $output .= '</tbody>';

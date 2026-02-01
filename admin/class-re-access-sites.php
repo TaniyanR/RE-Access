@@ -116,7 +116,7 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('Link Slot Assignments', 're-access'); ?></th>
                                 <td>
-                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                    <?php for ($slot = 1; $slot <= 8; $slot++): ?>
                                         <label style="margin-right: 10px;">
                                             <input type="checkbox" name="link_slots[]" value="<?php echo esc_attr($slot); ?>" <?php checked(in_array($slot, $link_selected, true)); ?>>
                                             <?php echo esc_html($slot); ?>
@@ -127,7 +127,7 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('RSS Slot Assignments', 're-access'); ?></th>
                                 <td>
-                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                    <?php for ($slot = 1; $slot <= 8; $slot++): ?>
                                         <label style="margin-right: 10px;">
                                             <input type="checkbox" name="rss_slots[]" value="<?php echo esc_attr($slot); ?>" <?php checked(in_array($slot, $rss_selected, true)); ?>>
                                             <?php echo esc_html($slot); ?>
@@ -167,7 +167,7 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('Link Slot Assignments', 're-access'); ?></th>
                                 <td>
-                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                    <?php for ($slot = 1; $slot <= 8; $slot++): ?>
                                         <label style="margin-right: 10px;">
                                             <input type="checkbox" name="link_slots[]" value="<?php echo esc_attr($slot); ?>">
                                             <?php echo esc_html($slot); ?>
@@ -178,7 +178,7 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('RSS Slot Assignments', 're-access'); ?></th>
                                 <td>
-                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                    <?php for ($slot = 1; $slot <= 8; $slot++): ?>
                                         <label style="margin-right: 10px;">
                                             <input type="checkbox" name="rss_slots[]" value="<?php echo esc_attr($slot); ?>">
                                             <?php echo esc_html($slot); ?>
@@ -450,7 +450,7 @@ class RE_Access_Sites {
         $sanitized = [];
         foreach ($slots as $slot) {
             $value = absint(wp_unslash($slot));
-            if ($value >= 1 && $value <= 10) {
+            if ($value >= 1 && $value <= 8) {
                 $sanitized[] = $value;
             }
         }
@@ -500,7 +500,7 @@ class RE_Access_Sites {
     private static function remove_slot_from_csv($csv, $slot) {
         $slots = self::parse_slot_csv($csv);
         $slot = absint($slot);
-        if ($slot < 1 || $slot > 10) {
+        if ($slot < 1 || $slot > 8) {
             return self::slots_to_csv($slots);
         }
 
@@ -566,7 +566,7 @@ class RE_Access_Sites {
         $link_map = [];
         $rss_map = [];
 
-        for ($slot = 1; $slot <= 10; $slot++) {
+        for ($slot = 1; $slot <= 8; $slot++) {
             $link_option = get_option('re_access_link_slot_' . $slot);
             $rss_option = get_option('re_access_rss_slot_' . $slot);
 
