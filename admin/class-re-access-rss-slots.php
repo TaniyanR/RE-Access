@@ -19,6 +19,8 @@ if (!defined('WPINC')) {
 }
 
 class RE_Access_RSS_Slots {
+
+    private const MAX_SITES_PER_SLOT = 3;
     
     /**
      * Render RSS slots page
@@ -216,9 +218,10 @@ class RE_Access_RSS_Slots {
             return;
         }
         
+        $item_count = max(1, min(50, (int) $_POST['item_count']));
         $data = [
             'description' => sanitize_text_field($_POST['description']),
-            'item_count' => (int)$_POST['item_count'],
+            'item_count' => $item_count,
             'cache_duration' => max(10, min(1440, (int)$_POST['cache_duration'])),
             'html_template' => wp_kses_post($_POST['html_template']),
             'css_template' => self::sanitize_css($_POST['css_template']),
@@ -272,6 +275,23 @@ class RE_Access_RSS_Slots {
                 "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, rss_slots) ORDER BY id DESC",
                 $slot
             ));
+            if (!empty($sites) && class_exists('RE_Access_Ranking')) {
+                $priorities = RE_Access_Ranking::get_return_priorities();
+                usort($sites, static function ($a, $b) use ($priorities) {
+                    $priority_a = $priorities[$a->id] ?? 0;
+                    $priority_b = $priorities[$b->id] ?? 0;
+                    if ($priority_a === $priority_b) {
+                        return $b->id <=> $a->id;
+                    }
+                    return $priority_b <=> $priority_a;
+                });
+            }
+            $sites = array_values(array_filter($sites, static function ($site) {
+                return !empty($site->rss_url);
+            }));
+            if (count($sites) > self::MAX_SITES_PER_SLOT) {
+                $sites = array_slice($sites, 0, self::MAX_SITES_PER_SLOT);
+            }
         }
         
         if (empty($sites)) {
@@ -282,6 +302,8 @@ class RE_Access_RSS_Slots {
         $css_output = '<style>' . self::sanitize_css($css) . '</style>';
         $output = '';
         $feed_items_by_site = [];
+        $merged_items = [];
+        $unique_items = [];
         
         foreach ($sites as $site) {
             if (empty($site->rss_url)) {
@@ -305,27 +327,56 @@ class RE_Access_RSS_Slots {
             $feed_items_by_site[$site->id] = $feed_items;
 
             foreach ($feed_items as $item) {
-                $html = $slot_data['html_template'];
-
-                // Replace variables
-                if (!empty($item['image'])) {
-                    $html = str_replace('[rr_item_image]', '<img src="' . esc_url($item['image']) . '" alt="' . esc_attr($item['title']) . '">', $html);
-                } else {
-                    // Remove image placeholder if no image
-                    $html = str_replace('[rr_item_image]', '', $html);
-                }
-
-                $html = str_replace('[rr_site_name]', esc_html($site->site_name), $html);
-                $html = str_replace('[rr_item_title]', esc_html($item['title']), $html);
+                $item['site_name'] = $site->site_name;
+                $item['site_url'] = $site->site_url;
                 $item_url = $item['url'];
-                if (class_exists('RE_Access_Tracker')) {
-                    $item_url = RE_Access_Tracker::get_outgoing_url($item['url']);
+                if (!empty($item_url)) {
+                    if (!isset($unique_items[$item_url]) || $item['timestamp'] > $unique_items[$item_url]['timestamp']) {
+                        $unique_items[$item_url] = $item;
+                    }
+                } else {
+                    $merged_items[] = $item;
                 }
-                $html = str_replace('[rr_item_url]', esc_url($item_url), $html);
-                $html = str_replace('[rr_item_date]', esc_html($item['date']), $html);
-
-                $output .= $html;
             }
+        }
+
+        if (!empty($unique_items)) {
+            $merged_items = array_merge($merged_items, array_values($unique_items));
+        }
+
+        if (empty($merged_items)) {
+            return '';
+        }
+
+        usort($merged_items, static function ($a, $b) {
+            $time_a = (int) ($a['timestamp'] ?? 0);
+            $time_b = (int) ($b['timestamp'] ?? 0);
+            return $time_b <=> $time_a;
+        });
+
+        $merged_items = array_slice($merged_items, 0, (int) $slot_data['item_count']);
+
+        foreach ($merged_items as $item) {
+            $html = $slot_data['html_template'];
+
+            // Replace variables
+            if (!empty($item['image'])) {
+                $html = str_replace('[rr_item_image]', '<img src="' . esc_url($item['image']) . '" alt="' . esc_attr($item['title']) . '">', $html);
+            } else {
+                // Remove image placeholder if no image
+                $html = str_replace('[rr_item_image]', '', $html);
+            }
+
+            $html = str_replace('[rr_site_name]', esc_html($item['site_name']), $html);
+            $html = str_replace('[rr_item_title]', esc_html($item['title']), $html);
+            $item_url = $item['url'];
+            if (class_exists('RE_Access_Tracker')) {
+                $item_url = RE_Access_Tracker::get_outgoing_url($item['url']);
+            }
+            $html = str_replace('[rr_item_url]', esc_url($item_url), $html);
+            $html = str_replace('[rr_item_date]', esc_html($item['date']), $html);
+
+            $output .= $html;
         }
         
         if ($output === '') {
@@ -388,6 +439,7 @@ class RE_Access_RSS_Slots {
                 'title' => $item->get_title(),
                 'url' => $item->get_permalink(),
                 'date' => $item->get_date('Y-m-d'),
+                'timestamp' => (int) $item->get_date('U'),
                 'image' => $image
             ];
         }

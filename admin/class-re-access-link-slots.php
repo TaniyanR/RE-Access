@@ -10,6 +10,8 @@ if (!defined('WPINC')) {
 }
 
 class RE_Access_Link_Slots {
+
+    private const MAX_SITES_PER_SLOT = 3;
     
     /**
      * Render link slots page
@@ -216,6 +218,20 @@ class RE_Access_Link_Slots {
                 "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id DESC",
                 $slot
             ));
+            if (!empty($sites) && class_exists('RE_Access_Ranking')) {
+                $priorities = RE_Access_Ranking::get_return_priorities();
+                usort($sites, static function ($a, $b) use ($priorities) {
+                    $priority_a = $priorities[$a->id] ?? 0;
+                    $priority_b = $priorities[$b->id] ?? 0;
+                    if ($priority_a === $priority_b) {
+                        return $b->id <=> $a->id;
+                    }
+                    return $priority_b <=> $priority_a;
+                });
+            }
+            if (count($sites) > self::MAX_SITES_PER_SLOT) {
+                $sites = array_slice($sites, 0, self::MAX_SITES_PER_SLOT);
+            }
         }
         
         if (empty($sites)) {
