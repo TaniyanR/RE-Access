@@ -179,10 +179,39 @@ class RE_Access_Link_Slots {
         $output = do_shortcode('[reaccess_link_slot slot="' . absint($slot) . '"]');
 
         if ($output === '') {
-            return '<p>' . esc_html__('このスロットに割り当てられたサイトがありません。サイト編集でスロットを割り当ててください。', 're-access') . '</p>';
+            return '<p>' . esc_html(self::get_preview_notice($slot)) . '</p>';
         }
 
         return $output;
+    }
+
+    /**
+     * Get preview notice message.
+     *
+     * @param int $slot
+     * @return string
+     */
+    private static function get_preview_notice($slot) {
+        global $wpdb;
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
+
+        $assigned_count = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $sites_table WHERE FIND_IN_SET(%d, link_slots)",
+            $slot
+        ));
+        if ($assigned_count === 0) {
+            return 'このスロットに割り当てられたサイトがありません。サイト編集でスロットを割り当ててください。';
+        }
+
+        $approved_count = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots)",
+            $slot
+        ));
+        if ($approved_count === 0) {
+            return '承認（approved）されていないサイトは表示されません。';
+        }
+
+        return 'このスロットに表示できるサイトがありません。サイトの承認状況とスロット割り当てを確認してください。';
     }
     
     /**
@@ -220,11 +249,17 @@ class RE_Access_Link_Slots {
             ));
             if (!empty($sites) && class_exists('RE_Access_Ranking')) {
                 $priorities = RE_Access_Ranking::get_return_priorities();
-                usort($sites, static function ($a, $b) use ($priorities) {
+                $seed = date_i18n('Y-m-d', current_time('timestamp')) . '|' . $slot;
+                usort($sites, static function ($a, $b) use ($priorities, $seed) {
                     $priority_a = $priorities[$a->id] ?? 0;
                     $priority_b = $priorities[$b->id] ?? 0;
                     if ($priority_a === $priority_b) {
-                        return $b->id <=> $a->id;
+                        $tie_a = crc32($seed . '|' . $a->id);
+                        $tie_b = crc32($seed . '|' . $b->id);
+                        if ($tie_a === $tie_b) {
+                            return $b->id <=> $a->id;
+                        }
+                        return $tie_a <=> $tie_b;
                     }
                     return $priority_b <=> $priority_a;
                 });

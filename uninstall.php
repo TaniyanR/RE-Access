@@ -22,7 +22,7 @@ delete_option('re_access_url_aliases');
 delete_option('re_access_github_url');
 delete_option('re_access_ranking_settings');
 
-for ($slot = 1; $slot <= 10; $slot++) {
+for ($slot = 1; $slot <= 8; $slot++) {
     delete_option('re_access_link_slot_' . $slot);
     delete_option('re_access_rss_slot_' . $slot);
 }
