@@ -52,6 +52,7 @@ $maybe_require('admin/class-re-access-sites.php');
 $maybe_require('admin/class-re-access-ranking.php');
 $maybe_require('admin/class-re-access-link-slots.php');
 $maybe_require('admin/class-re-access-rss-slots.php');
+$maybe_require('admin/class-re-access-import-export.php');
 
 /**
  * Activation hook: Create tables and save plugin version
@@ -131,6 +132,10 @@ function re_access_init() {
     if (class_exists('RE_Access_Sites') && method_exists('RE_Access_Sites', 'init')) {
         RE_Access_Sites::init();
     }
+
+    if (class_exists('RE_Access_Import_Export') && method_exists('RE_Access_Import_Export', 'init')) {
+        RE_Access_Import_Export::init();
+    }
     
 }
 add_action('init', 're_access_init');
@@ -209,6 +214,17 @@ function re_access_admin_menu() {
             'manage_options',
             're-access-rss-slots',
             ['RE_Access_RSS_Slots', 'render']
+        );
+    }
+
+    if (class_exists('RE_Access_Import_Export') && method_exists('RE_Access_Import_Export', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('インポート/エクスポート', 're-access'),
+            __('インポート/エクスポート', 're-access'),
+            'manage_options',
+            're-access-import-export',
+            ['RE_Access_Import_Export', 'render']
         );
     }
     
