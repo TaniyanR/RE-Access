@@ -210,36 +210,41 @@ class RE_Access_Link_Slots {
                 "SELECT * FROM $sites_table WHERE id = %d AND status = 'approved'",
                 $site_id
             ));
+            $sites = $site ? [$site] : [];
         } else {
-            $site = $wpdb->get_row($wpdb->prepare(
-                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id DESC LIMIT 1",
+            $sites = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id DESC",
                 $slot
             ));
         }
         
-        if (!$site) {
+        if (empty($sites)) {
             return '';  // Return empty string if no site is assigned to this slot
         }
         
-        $html = $slot_data['html_template'];
         $css = $slot_data['css_template'];
-
-        $site_url = $site->site_url;
-        if (class_exists('RE_Access_Tracker')) {
-            $site_url = RE_Access_Tracker::get_outgoing_url($site->site_url);
-        }
-        
-        // Replace variables
-        $html = str_replace('[rr_site_name]', esc_html($site->site_name), $html);
-        $html = str_replace('[rr_site_url]', esc_url($site_url), $html);
-        $html = str_replace('[rr_site_desc]', '', $html);
         
         // Sanitize CSS before output
         // Note: CSS is not HTML-escaped as it would break valid CSS syntax
         // The sanitize_css() method already strips tags and removes dangerous patterns
         $output = '<style>' . self::sanitize_css($css) . '</style>';
-        $output .= $html;
+
+        foreach ($sites as $site) {
+            $html = $slot_data['html_template'];
+
+            $site_url = $site->site_url;
+            if (class_exists('RE_Access_Tracker')) {
+                $site_url = RE_Access_Tracker::get_outgoing_url($site->site_url);
+            }
+
+            // Replace variables
+            $html = str_replace('[rr_site_name]', esc_html($site->site_name), $html);
+            $html = str_replace('[rr_site_url]', esc_url($site_url), $html);
+            $html = str_replace('[rr_site_desc]', '', $html);
+
+            $output .= $html;
+        }
         
-        return apply_filters('re_access_link_slot_output', $output, $atts, $site);
+        return apply_filters('re_access_link_slot_output', $output, $atts, $sites);
     }
 }
