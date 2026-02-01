@@ -28,6 +28,8 @@ class RE_Access_Database {
             site_name varchar(255) NOT NULL,
             site_url varchar(512) NOT NULL,
             rss_url varchar(512) DEFAULT '',
+            link_slots varchar(255) NOT NULL DEFAULT '',
+            rss_slots varchar(255) NOT NULL DEFAULT '',
             status varchar(20) DEFAULT 'pending',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
