@@ -72,27 +72,6 @@ class RE_Access_RSS_Slots {
                             <td><input type="text" name="description" value="<?php echo esc_attr($slot_data['description']); ?>" class="large-text"></td>
                         </tr>
                         <tr>
-                            <th><?php esc_html_e('Assigned Site', 're-access'); ?></th>
-                            <td>
-                                <select name="site_id">
-                                    <option value="0"><?php esc_html_e('No site assigned', 're-access'); ?></option>
-                                    <?php
-                                    global $wpdb;
-                                    $sites_table = $wpdb->prefix . 'reaccess_sites';
-                                    $sites = $wpdb->get_results($wpdb->prepare(
-                                        "SELECT id, site_name FROM $sites_table WHERE status = %s ORDER BY site_name ASC",
-                                        'approved'
-                                    ));
-                                    foreach ($sites as $site) {
-                                        $selected = ($site->id == $slot_data['site_id']) ? 'selected' : '';
-                                        echo '<option value="' . esc_attr($site->id) . '" ' . $selected . '>' . esc_html($site->site_name) . '</option>';
-                                    }
-                                    ?>
-                                </select>
-                                <p class="description"><?php esc_html_e('Select a site to use as default for this slot when site_id is not provided in the shortcode.', 're-access'); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
                             <th><?php esc_html_e('Items to Display', 're-access'); ?></th>
                             <td><input type="number" name="item_count" value="<?php echo esc_attr($slot_data['item_count']); ?>" min="1" max="50"></td>
                         </tr>
@@ -132,7 +111,7 @@ class RE_Access_RSS_Slots {
                 
                 <h3><?php esc_html_e('Shortcode', 're-access'); ?></h3>
                 <code>[reaccess_rss_slot slot="<?php echo $current_slot; ?>"]</code>
-                <p class="description"><?php esc_html_e('Use site_id parameter to override the assigned site:', 're-access'); ?> <code>[reaccess_rss_slot slot="<?php echo $current_slot; ?>" site_id="X"]</code></p>
+                <p class="description"><?php esc_html_e('Use site_id parameter to select the site:', 're-access'); ?> <code>[reaccess_rss_slot slot="<?php echo $current_slot; ?>" site_id="X"]</code></p>
             </div>
             
             <!-- Preview -->
@@ -150,7 +129,6 @@ class RE_Access_RSS_Slots {
     private static function get_slot_data($slot) {
         $defaults = [
             'description' => '',
-            'site_id' => 0,
             'item_count' => 5,
             'cache_duration' => 30,
             'html_template' => '<div class="re-rss-item">
@@ -237,11 +215,10 @@ class RE_Access_RSS_Slots {
         
         $data = [
             'description' => sanitize_text_field($_POST['description']),
-            'site_id' => (int)$_POST['site_id'],
             'item_count' => (int)$_POST['item_count'],
             'cache_duration' => max(10, min(1440, (int)$_POST['cache_duration'])),
             'html_template' => wp_kses_post($_POST['html_template']),
-            'css_template' => self::sanitize_css($_POST['css_template'])
+            'css_template' => self::sanitize_css($_POST['css_template']),
         ];
 
         update_option('re_access_rss_slot_' . $slot, $data);
@@ -293,13 +270,8 @@ class RE_Access_RSS_Slots {
         // Get slot template
         $slot_data = self::get_slot_data($slot);
         
-        // If no site_id provided, use the assigned site from slot settings
-        if (!$site_id && !empty($slot_data['site_id'])) {
-            $site_id = (int)$slot_data['site_id'];
-        }
-        
         if (!$site_id) {
-            return '<p>' . esc_html__('Site ID is required or must be assigned to the slot', 're-access') . '</p>';
+            return '<p>' . esc_html__('Site ID is required.', 're-access') . '</p>';
         }
         
         // Get site data
