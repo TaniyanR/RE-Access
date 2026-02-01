@@ -19,6 +19,7 @@ class RE_Access_Sites {
         add_action('admin_post_re_access_approve_site', [__CLASS__, 'handle_approve_site']);
         add_action('admin_post_re_access_delete_site', [__CLASS__, 'handle_delete_site']);
         add_action('admin_post_re_access_update_site', [__CLASS__, 'handle_update_site']);
+        add_action('admin_init', [__CLASS__, 'migrate_slot_assignments']);
     }
     
     /**
@@ -85,6 +86,11 @@ class RE_Access_Sites {
             }
             ?>
             
+            <?php
+            $link_selected = $edit_site ? self::parse_slot_csv($edit_site->link_slots) : [];
+            $rss_selected = $edit_site ? self::parse_slot_csv($edit_site->rss_slots) : [];
+            ?>
+
             <?php if ($edit_site): ?>
                 <!-- Edit Form -->
                 <div style="background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin: 20px 0;">
@@ -106,6 +112,28 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('RSS URL', 're-access'); ?></th>
                                 <td><input type="url" name="rss_url" value="<?php echo esc_attr($edit_site->rss_url); ?>" class="regular-text"></td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Link Slot Assignments', 're-access'); ?></th>
+                                <td>
+                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                        <label style="margin-right: 10px;">
+                                            <input type="checkbox" name="link_slots[]" value="<?php echo esc_attr($slot); ?>" <?php checked(in_array($slot, $link_selected, true)); ?>>
+                                            <?php echo esc_html($slot); ?>
+                                        </label>
+                                    <?php endfor; ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('RSS Slot Assignments', 're-access'); ?></th>
+                                <td>
+                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                        <label style="margin-right: 10px;">
+                                            <input type="checkbox" name="rss_slots[]" value="<?php echo esc_attr($slot); ?>" <?php checked(in_array($slot, $rss_selected, true)); ?>>
+                                            <?php echo esc_html($slot); ?>
+                                        </label>
+                                    <?php endfor; ?>
+                                </td>
                             </tr>
                         </table>
 
@@ -135,6 +163,28 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('RSS URL', 're-access'); ?></th>
                                 <td><input type="url" name="rss_url" class="regular-text"></td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('Link Slot Assignments', 're-access'); ?></th>
+                                <td>
+                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                        <label style="margin-right: 10px;">
+                                            <input type="checkbox" name="link_slots[]" value="<?php echo esc_attr($slot); ?>">
+                                            <?php echo esc_html($slot); ?>
+                                        </label>
+                                    <?php endfor; ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php esc_html_e('RSS Slot Assignments', 're-access'); ?></th>
+                                <td>
+                                    <?php for ($slot = 1; $slot <= 10; $slot++): ?>
+                                        <label style="margin-right: 10px;">
+                                            <input type="checkbox" name="rss_slots[]" value="<?php echo esc_attr($slot); ?>">
+                                            <?php echo esc_html($slot); ?>
+                                        </label>
+                                    <?php endfor; ?>
+                                </td>
                             </tr>
                         </table>
                         
@@ -253,20 +303,29 @@ class RE_Access_Sites {
         global $wpdb;
         $table = $wpdb->prefix . 'reaccess_sites';
         
-        $site_url = RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url']));
+        $site_url = isset($_POST['site_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url'])) : '';
         $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
+        $site_name = isset($_POST['site_name']) ? sanitize_text_field(wp_unslash($_POST['site_name'])) : '';
+        $link_slots = self::sanitize_slots(isset($_POST['link_slots']) ? $_POST['link_slots'] : []);
+        $rss_slots = self::sanitize_slots(isset($_POST['rss_slots']) ? $_POST['rss_slots'] : []);
         
         $wpdb->insert($table, [
-            'site_name' => sanitize_text_field($_POST['site_name']),
+            'site_name' => $site_name,
             'site_url' => $site_url,
             'rss_url' => $rss_url,
+            'link_slots' => self::slots_to_csv($link_slots),
+            'rss_slots' => self::slots_to_csv($rss_slots),
             'status' => 'pending'
         ]);
+
+        if (!empty($wpdb->insert_id)) {
+            self::enforce_slot_exclusivity((int) $wpdb->insert_id, $link_slots, $rss_slots);
+        }
         
         // Create notice
         RE_Access_Notices::add_notice('site_registered', sprintf(
             __('New site registered: %s', 're-access'),
-            sanitize_text_field($_POST['site_name'])
+            $site_name
         ), $wpdb->insert_id);
         
         wp_redirect(admin_url('admin.php?page=re-access-sites&status=pending&message=added'));
@@ -354,19 +413,216 @@ class RE_Access_Sites {
         $current_site = $wpdb->get_row($wpdb->prepare("SELECT status FROM $table WHERE id = %d", $site_id));
         $site_status = $current_site ? $current_site->status : 'approved';
         
-        $site_url = RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url']));
+        $site_url = isset($_POST['site_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url'])) : '';
         $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
+        $site_name = isset($_POST['site_name']) ? sanitize_text_field(wp_unslash($_POST['site_name'])) : '';
+        $link_slots = self::sanitize_slots(isset($_POST['link_slots']) ? $_POST['link_slots'] : []);
+        $rss_slots = self::sanitize_slots(isset($_POST['rss_slots']) ? $_POST['rss_slots'] : []);
         
         $wpdb->update($table, [
-            'site_name' => sanitize_text_field($_POST['site_name']),
+            'site_name' => $site_name,
             'site_url' => $site_url,
-            'rss_url' => $rss_url
+            'rss_url' => $rss_url,
+            'link_slots' => self::slots_to_csv($link_slots),
+            'rss_slots' => self::slots_to_csv($rss_slots),
         ], ['id' => $site_id]);
+
+        self::enforce_slot_exclusivity($site_id, $link_slots, $rss_slots);
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');
         
         wp_redirect(admin_url('admin.php?page=re-access-sites&status=' . $site_status . '&message=updated'));
         exit;
+    }
+
+    /**
+     * Sanitize slot input.
+     *
+     * @param array $slots
+     * @return array
+     */
+    private static function sanitize_slots($slots) {
+        if (!is_array($slots)) {
+            return [];
+        }
+
+        $sanitized = [];
+        foreach ($slots as $slot) {
+            $value = absint(wp_unslash($slot));
+            if ($value >= 1 && $value <= 10) {
+                $sanitized[] = $value;
+            }
+        }
+
+        $sanitized = array_values(array_unique($sanitized));
+        sort($sanitized, SORT_NUMERIC);
+
+        return $sanitized;
+    }
+
+    /**
+     * Convert slot array to CSV string.
+     *
+     * @param array $slots
+     * @return string
+     */
+    private static function slots_to_csv($slots) {
+        if (empty($slots)) {
+            return '';
+        }
+
+        return implode(',', $slots);
+    }
+
+    /**
+     * Parse CSV string into slot array.
+     *
+     * @param string $csv
+     * @return array
+     */
+    private static function parse_slot_csv($csv) {
+        if (empty($csv) || !is_string($csv)) {
+            return [];
+        }
+
+        $parts = array_filter(array_map('trim', explode(',', $csv)), 'strlen');
+        return self::sanitize_slots($parts);
+    }
+
+    /**
+     * Remove a single slot from a CSV list.
+     *
+     * @param string $csv
+     * @param int $slot
+     * @return string
+     */
+    private static function remove_slot_from_csv($csv, $slot) {
+        $slots = self::parse_slot_csv($csv);
+        $slot = absint($slot);
+        if ($slot < 1 || $slot > 10) {
+            return self::slots_to_csv($slots);
+        }
+
+        $slots = array_values(array_diff($slots, [$slot]));
+        sort($slots, SORT_NUMERIC);
+
+        return self::slots_to_csv($slots);
+    }
+
+    /**
+     * Ensure slot exclusivity across sites.
+     *
+     * @param int $site_id
+     * @param array $link_slots
+     * @param array $rss_slots
+     */
+    private static function enforce_slot_exclusivity($site_id, $link_slots, $rss_slots) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'reaccess_sites';
+
+        foreach ($link_slots as $slot) {
+            $sites = $wpdb->get_results($wpdb->prepare(
+                "SELECT id, link_slots FROM $table WHERE id != %d AND FIND_IN_SET(%d, link_slots)",
+                $site_id,
+                $slot
+            ));
+
+            foreach ($sites as $site) {
+                $updated = self::remove_slot_from_csv($site->link_slots, $slot);
+                if ($updated !== $site->link_slots) {
+                    $wpdb->update($table, ['link_slots' => $updated], ['id' => $site->id]);
+                }
+            }
+        }
+
+        foreach ($rss_slots as $slot) {
+            $sites = $wpdb->get_results($wpdb->prepare(
+                "SELECT id, rss_slots FROM $table WHERE id != %d AND FIND_IN_SET(%d, rss_slots)",
+                $site_id,
+                $slot
+            ));
+
+            foreach ($sites as $site) {
+                $updated = self::remove_slot_from_csv($site->rss_slots, $slot);
+                if ($updated !== $site->rss_slots) {
+                    $wpdb->update($table, ['rss_slots' => $updated], ['id' => $site->id]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Migrate legacy slot assignments stored in options.
+     */
+    public static function migrate_slot_assignments() {
+        if (get_option('re_access_migrated_slot_assignments')) {
+            return;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'reaccess_sites';
+
+        $link_map = [];
+        $rss_map = [];
+
+        for ($slot = 1; $slot <= 10; $slot++) {
+            $link_option = get_option('re_access_link_slot_' . $slot);
+            $rss_option = get_option('re_access_rss_slot_' . $slot);
+
+            $link_site_id = 0;
+            if (is_array($link_option) && isset($link_option['site_id'])) {
+                $link_site_id = absint($link_option['site_id']);
+            } elseif (is_numeric($link_option)) {
+                $link_site_id = absint($link_option);
+            }
+
+            if ($link_site_id > 0) {
+                $link_map[$link_site_id][] = $slot;
+            }
+
+            $rss_site_id = 0;
+            if (is_array($rss_option) && isset($rss_option['site_id'])) {
+                $rss_site_id = absint($rss_option['site_id']);
+            } elseif (is_numeric($rss_option)) {
+                $rss_site_id = absint($rss_option);
+            }
+
+            if ($rss_site_id > 0) {
+                $rss_map[$rss_site_id][] = $slot;
+            }
+        }
+
+        $site_ids = array_values(array_unique(array_merge(array_keys($link_map), array_keys($rss_map))));
+        foreach ($site_ids as $site_id) {
+            $site = $wpdb->get_row($wpdb->prepare(
+                "SELECT id, link_slots, rss_slots FROM $table WHERE id = %d",
+                $site_id
+            ));
+
+            if (!$site) {
+                continue;
+            }
+
+            $link_slots = self::parse_slot_csv($site->link_slots);
+            $rss_slots = self::parse_slot_csv($site->rss_slots);
+
+            if (isset($link_map[$site_id])) {
+                $link_slots = array_merge($link_slots, $link_map[$site_id]);
+                $link_slots = self::sanitize_slots($link_slots);
+            }
+
+            if (isset($rss_map[$site_id])) {
+                $rss_slots = array_merge($rss_slots, $rss_map[$site_id]);
+                $rss_slots = self::sanitize_slots($rss_slots);
+            }
+
+            $wpdb->update($table, [
+                'link_slots' => self::slots_to_csv($link_slots),
+                'rss_slots' => self::slots_to_csv($rss_slots),
+            ], ['id' => $site_id]);
+        }
+
+        update_option('re_access_migrated_slot_assignments', 1);
     }
 }
