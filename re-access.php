@@ -53,6 +53,7 @@ $maybe_require('admin/class-re-access-ranking.php');
 $maybe_require('admin/class-re-access-link-slots.php');
 $maybe_require('admin/class-re-access-rss-slots.php');
 $maybe_require('admin/class-re-access-import-export.php');
+$maybe_require('admin/class-re-access-unregistered-urls.php');
 
 /**
  * Activation hook: Create tables and save plugin version
@@ -225,6 +226,17 @@ function re_access_admin_menu() {
             'manage_options',
             're-access-import-export',
             ['RE_Access_Import_Export', 'render']
+        );
+    }
+
+    if (class_exists('RE_Access_Unregistered_URLs') && method_exists('RE_Access_Unregistered_URLs', 'render')) {
+        add_submenu_page(
+            're-access',
+            __('未登録URL', 're-access'),
+            __('未登録URL', 're-access'),
+            'manage_options',
+            're-access-unregistered-urls',
+            ['RE_Access_Unregistered_URLs', 'render']
         );
     }
     

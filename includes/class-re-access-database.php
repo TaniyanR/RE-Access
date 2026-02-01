@@ -30,6 +30,7 @@ class RE_Access_Database {
             rss_url varchar(512) DEFAULT '',
             link_slots varchar(255) NOT NULL DEFAULT '',
             rss_slots varchar(255) NOT NULL DEFAULT '',
+            url_aliases varchar(2048) NOT NULL DEFAULT '',
             status varchar(20) DEFAULT 'pending',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -82,6 +83,22 @@ class RE_Access_Database {
             KEY type (type)
         ) $charset_collate;";
         dbDelta($sql_notice);
+
+        // Unregistered inbound referrers (daily counts)
+        $table_unregistered = $wpdb->prefix . 'reaccess_unregistered_in';
+        $sql_unregistered = "CREATE TABLE $table_unregistered (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            date date NOT NULL,
+            ref_host varchar(255) NOT NULL,
+            count int(11) DEFAULT 0,
+            first_seen datetime DEFAULT CURRENT_TIMESTAMP,
+            last_seen datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY date_ref_host (date, ref_host),
+            KEY ref_host (ref_host),
+            KEY date (date)
+        ) $charset_collate;";
+        dbDelta($sql_unregistered);
     }
 
     /**
@@ -96,6 +113,7 @@ class RE_Access_Database {
             'reaccess_daily',
             'reaccess_site_daily',
             'reaccess_notice',
+            'reaccess_unregistered_in',
         ];
 
         foreach ($table_names as $table_name) {

@@ -10,6 +10,7 @@ if (!defined('WPINC')) {
 }
 
 class RE_Access_Sites {
+    private const MAX_ALIAS_COUNT = 100;
 
     /**
      * Initialize
@@ -89,9 +90,12 @@ class RE_Access_Sites {
             <?php
             $link_selected = $edit_site ? self::parse_slot_csv($edit_site->link_slots) : [];
             $rss_selected = $edit_site ? self::parse_slot_csv($edit_site->rss_slots) : [];
+            $alias_prefill = isset($_GET['alias']) ? sanitize_text_field($_GET['alias']) : '';
+            $alias_prefill = $alias_prefill !== '' ? RE_Access_Database::normalize_url($alias_prefill) : '';
             ?>
 
             <?php if ($edit_site): ?>
+                <?php $alias_value = self::format_aliases_for_textarea($edit_site->url_aliases ?? '', $alias_prefill); ?>
                 <!-- Edit Form -->
                 <div style="background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin: 20px 0;">
                     <h2><?php esc_html_e('Edit Site', 're-access'); ?></h2>
@@ -135,6 +139,13 @@ class RE_Access_Sites {
                                     <?php endfor; ?>
                                 </td>
                             </tr>
+                            <tr>
+                                <th><?php echo esc_html__('統合URL（別名URL）', 're-access'); ?></th>
+                                <td>
+                                    <textarea name="url_aliases" rows="4" class="large-text code"><?php echo esc_textarea($alias_value); ?></textarea>
+                                    <p class="description"><?php echo esc_html__('ここに書いたURL/ドメインからの流入は、このサイトのINとして集計します。', 're-access'); ?></p>
+                                </td>
+                            </tr>
                         </table>
 
                         <p class="submit">
@@ -144,6 +155,7 @@ class RE_Access_Sites {
                     </form>
                 </div>
             <?php else: ?>
+                <?php $alias_value = self::format_aliases_for_textarea('', $alias_prefill); ?>
                 <!-- Add New Site Form -->
                 <div style="background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin: 20px 0;">
                     <h2><?php esc_html_e('Add New Site', 're-access'); ?></h2>
@@ -184,6 +196,13 @@ class RE_Access_Sites {
                                             <?php echo esc_html($slot); ?>
                                         </label>
                                     <?php endfor; ?>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('統合URL（別名URL）', 're-access'); ?></th>
+                                <td>
+                                    <textarea name="url_aliases" rows="4" class="large-text code"><?php echo esc_textarea($alias_value); ?></textarea>
+                                    <p class="description"><?php echo esc_html__('ここに書いたURL/ドメインからの流入は、このサイトのINとして集計します。', 're-access'); ?></p>
                                 </td>
                             </tr>
                         </table>
@@ -312,6 +331,9 @@ class RE_Access_Sites {
         $rss_slots = (isset($_POST['rss_slots']) && is_array($_POST['rss_slots']))
             ? self::sanitize_slots($_POST['rss_slots'])
             : [];
+        $alias_input = isset($_POST['url_aliases']) ? wp_unslash($_POST['url_aliases']) : '';
+        $canonical = RE_Access_Database::normalize_url($site_url);
+        $aliases = self::sanitize_aliases_input($alias_input, $canonical);
         
         $wpdb->insert($table, [
             'site_name' => $site_name,
@@ -319,10 +341,13 @@ class RE_Access_Sites {
             'rss_url' => $rss_url,
             'link_slots' => self::slots_to_csv($link_slots),
             'rss_slots' => self::slots_to_csv($rss_slots),
+            'url_aliases' => self::aliases_to_csv($aliases),
             'status' => 'pending'
         ]);
 
         // Slot exclusivity removed: multiple sites can share the same slot.
+
+        self::update_url_aliases_option([], $aliases, $canonical);
         
         // Create notice
         RE_Access_Notices::add_notice('site_registered', sprintf(
@@ -383,6 +408,12 @@ class RE_Access_Sites {
         $site_status = $site ? $site->status : 'approved';
         
         $wpdb->delete($table, ['id' => $site_id]);
+
+        if ($site) {
+            $canonical = RE_Access_Database::normalize_url($site->site_url);
+            $old_aliases = self::parse_alias_csv($site->url_aliases ?? '');
+            self::update_url_aliases_option($old_aliases, [], $canonical);
+        }
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');
@@ -412,7 +443,7 @@ class RE_Access_Sites {
         $site_id = (int)$_POST['site_id'];
         
         // Get current status before update
-        $current_site = $wpdb->get_row($wpdb->prepare("SELECT status FROM $table WHERE id = %d", $site_id));
+        $current_site = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id = %d", $site_id));
         $site_status = $current_site ? $current_site->status : 'approved';
         
         $site_url = isset($_POST['site_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url'])) : '';
@@ -424,6 +455,9 @@ class RE_Access_Sites {
         $rss_slots = (isset($_POST['rss_slots']) && is_array($_POST['rss_slots']))
             ? self::sanitize_slots($_POST['rss_slots'])
             : [];
+        $alias_input = isset($_POST['url_aliases']) ? wp_unslash($_POST['url_aliases']) : '';
+        $canonical = RE_Access_Database::normalize_url($site_url);
+        $aliases = self::sanitize_aliases_input($alias_input, $canonical);
         
         $wpdb->update($table, [
             'site_name' => $site_name,
@@ -431,9 +465,13 @@ class RE_Access_Sites {
             'rss_url' => $rss_url,
             'link_slots' => self::slots_to_csv($link_slots),
             'rss_slots' => self::slots_to_csv($rss_slots),
+            'url_aliases' => self::aliases_to_csv($aliases),
         ], ['id' => $site_id]);
 
         // Slot exclusivity removed: multiple sites can share the same slot.
+
+        $old_aliases = $current_site ? self::parse_alias_csv($current_site->url_aliases ?? '') : [];
+        self::update_url_aliases_option($old_aliases, $aliases, $canonical);
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');
@@ -511,6 +549,119 @@ class RE_Access_Sites {
         sort($slots, SORT_NUMERIC);
 
         return self::slots_to_csv($slots);
+    }
+
+    /**
+     * Normalize alias input from textarea.
+     *
+     * @param string $input
+     * @param string $canonical
+     * @return array
+     */
+    private static function sanitize_aliases_input($input, $canonical) {
+        if (!is_string($input) || $input === '') {
+            return [];
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $input);
+        if (!$lines) {
+            return [];
+        }
+
+        $aliases = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $normalized = RE_Access_Database::normalize_url($line);
+            if ($normalized === '' || ($canonical !== '' && $normalized === $canonical)) {
+                continue;
+            }
+            $aliases[] = $normalized;
+        }
+
+        $aliases = array_values(array_unique($aliases));
+        if (count($aliases) > self::MAX_ALIAS_COUNT) {
+            $aliases = array_slice($aliases, 0, self::MAX_ALIAS_COUNT);
+        }
+
+        return $aliases;
+    }
+
+    /**
+     * Convert alias list to CSV string.
+     *
+     * @param array $aliases
+     * @return string
+     */
+    private static function aliases_to_csv($aliases) {
+        if (empty($aliases)) {
+            return '';
+        }
+
+        return implode(',', $aliases);
+    }
+
+    /**
+     * Parse alias CSV string into list.
+     *
+     * @param string $csv
+     * @return array
+     */
+    private static function parse_alias_csv($csv) {
+        if (empty($csv) || !is_string($csv)) {
+            return [];
+        }
+
+        $parts = array_filter(array_map('trim', explode(',', $csv)), 'strlen');
+        $parts = array_values(array_unique($parts));
+
+        return $parts;
+    }
+
+    /**
+     * Format alias list for textarea display.
+     *
+     * @param string $csv
+     * @param string $prefill
+     * @return string
+     */
+    private static function format_aliases_for_textarea($csv, $prefill) {
+        $aliases = self::parse_alias_csv($csv);
+        if ($prefill !== '' && !in_array($prefill, $aliases, true)) {
+            $aliases[] = $prefill;
+        }
+        if (empty($aliases)) {
+            return '';
+        }
+
+        return implode("\n", $aliases);
+    }
+
+    /**
+     * Update URL alias options.
+     *
+     * @param array $old_aliases
+     * @param array $new_aliases
+     * @param string $canonical
+     */
+    private static function update_url_aliases_option($old_aliases, $new_aliases, $canonical) {
+        $aliases = RE_Access_Database::get_url_aliases();
+
+        foreach ($old_aliases as $alias) {
+            if (isset($aliases[$alias])) {
+                unset($aliases[$alias]);
+            }
+        }
+
+        if ($canonical !== '') {
+            foreach ($new_aliases as $alias) {
+                $aliases[$alias] = $canonical;
+            }
+        }
+
+        RE_Access_Database::set_url_aliases($aliases);
     }
 
     /**

@@ -83,7 +83,11 @@ class RE_Access_Tracker {
         self::increment_daily_metric($table, 'total', $today);
         
         // Track site-specific IN if it's a registered site
-        self::track_site_referrer($normalized_referer, $today);
+        $matched = self::track_site_referrer($normalized_referer, $today);
+
+        if (!$matched) {
+            self::track_unregistered_referrer($normalized_referer, $today);
+        }
     }
     
     /**
@@ -103,19 +107,54 @@ class RE_Access_Tracker {
             set_transient($cache_key, $sites, HOUR_IN_SECONDS);
         }
         
+        $referer_host = self::get_base_domain($referer);
+        if ($referer_host === '') {
+            return false;
+        }
+
         foreach ($sites as $site) {
             $site_normalized = RE_Access_Database::resolve_url_alias($site->site_url);
             if (empty($site_normalized)) {
                 continue;
             }
-            $referer_host = self::get_base_domain($referer);
             $site_host = self::get_base_domain($site_normalized);
 
             if ($referer_host && $site_host && strtolower($referer_host) === strtolower($site_host)) {
                 self::increment_site_metric($tracking_table, $site->id, $date, 'in');
-                break;
+                return true;
             }
         }
+
+        return false;
+    }
+
+    /**
+     * Track unregistered referrer host.
+     *
+     * @param string $referer
+     * @param string $date
+     */
+    private static function track_unregistered_referrer($referer, $date) {
+        global $wpdb;
+
+        $ref_host = self::get_base_domain($referer);
+        if ($ref_host === '') {
+            return;
+        }
+
+        $table = $wpdb->prefix . 'reaccess_unregistered_in';
+        $now = current_time('mysql');
+
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO $table (date, ref_host, count, first_seen, last_seen)
+             VALUES (%s, %s, 1, %s, %s)
+             ON DUPLICATE KEY UPDATE count = count + 1, last_seen = %s",
+            $date,
+            $ref_host,
+            $now,
+            $now,
+            $now
+        ));
     }
     
     /**
