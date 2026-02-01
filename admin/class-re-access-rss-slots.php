@@ -264,33 +264,37 @@ class RE_Access_RSS_Slots {
             'site_id' => 0
         ], $atts);
         
-        $slot = max(1, min(10, (int)$atts['slot']));
-        $site_id = (int)$atts['site_id'];
+        $slot = absint($atts['slot']);
+        $slot = max(1, min(10, $slot));
+        $site_id = absint($atts['site_id']);
         
         // Get slot template
         $slot_data = self::get_slot_data($slot);
         
-        if (!$site_id) {
-            return '<p>' . esc_html__('Site ID is required.', 're-access') . '</p>';
-        }
-        
         // Get site data
         global $wpdb;
         $sites_table = $wpdb->prefix . 'reaccess_sites';
-        $site = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $sites_table WHERE id = %d AND status = 'approved'",
-            $site_id
-        ));
+        if ($site_id > 0) {
+            $site = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE id = %d AND status = 'approved'",
+                $site_id
+            ));
+        } else {
+            $site = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, rss_slots) ORDER BY id DESC LIMIT 1",
+                $slot
+            ));
+        }
         
         if (!$site || empty($site->rss_url)) {
-            return '<p>' . esc_html__('RSS feed not available', 're-access') . '</p>';
+            return '';
         }
         
         // Fetch RSS feed with caching
         $feed_items = self::fetch_rss_feed($site->rss_url, $slot_data['item_count'], $slot_data['cache_duration']);
         
         if (empty($feed_items)) {
-            return '<p>' . esc_html__('No RSS items available', 're-access') . '</p>';
+            return '';
         }
         
         $css = $slot_data['css_template'];

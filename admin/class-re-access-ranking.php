@@ -40,7 +40,7 @@ class RE_Access_Ranking {
                     
                     <table class="form-table">
                         <tr>
-                            <th><?php esc_html_e('Default Period', 're-access'); ?></th>
+                            <th><?php esc_html_e('集計期間', 're-access'); ?></th>
                             <td>
                                 <select name="period">
                                     <option value="1" <?php selected($settings['period'], '1'); ?>><?php esc_html_e('1 Day', 're-access'); ?></option>
@@ -54,16 +54,46 @@ class RE_Access_Ranking {
                             <td><input type="number" name="limit" value="<?php echo esc_attr($settings['limit']); ?>" min="1" max="100"></td>
                         </tr>
                         <tr>
-                            <th><?php esc_html_e('Show IN', 're-access'); ?></th>
-                            <td><input type="checkbox" name="show_in" value="1" <?php checked($settings['show_in'], '1'); ?>></td>
+                            <th><?php esc_html_e('流入', 're-access'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="show_in" value="1" <?php checked($settings['show_in'], '1'); ?>>
+                                    <?php esc_html_e('表示', 're-access'); ?>
+                                </label>
+                                <label style="margin-left: 10px;">
+                                    <?php esc_html_e('何件以上表示', 're-access'); ?>
+                                    <select name="min_in">
+                                        <?php for ($i = 0; $i <= 50; $i++): ?>
+                                            <option value="<?php echo $i; ?>" <?php selected($settings['min_in'], (string) $i); ?>><?php echo $i; ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                </label>
+                            </td>
                         </tr>
                         <tr>
-                            <th><?php esc_html_e('Show OUT', 're-access'); ?></th>
-                            <td><input type="checkbox" name="show_out" value="1" <?php checked($settings['show_out'], '1'); ?>></td>
+                            <th><?php esc_html_e('流出', 're-access'); ?></th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" name="show_out" value="1" <?php checked($settings['show_out'], '1'); ?>>
+                                    <?php esc_html_e('表示', 're-access'); ?>
+                                </label>
+                                <label style="margin-left: 10px;">
+                                    <?php esc_html_e('何件以上表示', 're-access'); ?>
+                                    <select name="min_out">
+                                        <?php for ($i = 0; $i <= 50; $i++): ?>
+                                            <option value="<?php echo $i; ?>" <?php selected($settings['min_out'], (string) $i); ?>><?php echo $i; ?></option>
+                                        <?php endfor; ?>
+                                    </select>
+                                </label>
+                            </td>
                         </tr>
                         <tr>
-                            <th><?php esc_html_e('Table Width', 're-access'); ?></th>
-                            <td><input type="text" name="width" value="<?php echo esc_attr($settings['width']); ?>" placeholder="100%"></td>
+                            <th><?php esc_html_e('テーブル幅(px)', 're-access'); ?></th>
+                            <td><input type="number" name="width" value="<?php echo esc_attr($settings['width']); ?>" min="1"></td>
+                        </tr>
+                        <tr>
+                            <th><?php esc_html_e('テーブル高さ(px)', 're-access'); ?></th>
+                            <td><input type="number" name="height" value="<?php echo esc_attr($settings['height']); ?>" min="1"></td>
                         </tr>
                         <tr>
                             <th><?php esc_html_e('Accent Color', 're-access'); ?></th>
@@ -76,20 +106,6 @@ class RE_Access_Ranking {
                         <tr>
                             <th><?php esc_html_e('Text Color', 're-access'); ?></th>
                             <td><input type="color" name="text" value="<?php echo esc_attr($settings['text']); ?>"></td>
-                        </tr>
-                        <tr>
-                            <th><?php esc_html_e('HTML Template', 're-access'); ?></th>
-                            <td>
-                                <textarea name="html_template" rows="5" style="width: 100%; font-family: monospace;"><?php echo esc_textarea($settings['html_template']); ?></textarea>
-                                <p class="description"><?php esc_html_e('Use [ranking_items] for dynamic content.', 're-access'); ?></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th><?php esc_html_e('CSS Template', 're-access'); ?></th>
-                            <td>
-                                <textarea name="css_template" rows="5" style="width: 100%; font-family: monospace;"><?php echo esc_textarea($settings['css_template']); ?></textarea>
-                                <p class="description"><?php esc_html_e('Custom CSS styles for the ranking display.', 're-access'); ?></p>
-                            </td>
                         </tr>
                     </table>
                     
@@ -126,28 +142,6 @@ class RE_Access_Ranking {
             </div>
         </div>
         <?php
-    }
-    
-    /**
-     * Sanitize CSS to prevent XSS attacks
-     * 
-     * This method removes dangerous CSS patterns that could be used for XSS attacks.
-     * Note: CSS content is NOT HTML-escaped as that would break valid CSS syntax.
-     * Instead, we strip all HTML tags and remove dangerous CSS features.
-     */
-    private static function sanitize_css($css) {
-        // Strip all tags first
-        $css = wp_strip_all_tags($css);
-        
-        // Remove dangerous CSS patterns (with whitespace handling)
-        $css = preg_replace('/expression\s*\(\s*/i', '', $css);
-        $css = preg_replace('/javascript\s*:\s*/i', '', $css);
-        $css = preg_replace('/vbscript\s*:\s*/i', '', $css);
-        $css = preg_replace('/-moz-binding\s*/i', '', $css);
-        $css = preg_replace('/@import\s*/i', '', $css);
-        $css = preg_replace('/behavior\s*:\s*/i', '', $css);
-        
-        return $css;
     }
     
     /**
@@ -189,26 +183,49 @@ class RE_Access_Ranking {
             return '';
         }
 
-        $output = '<table class="re-access-ranking-table" style="width: ' . esc_attr($settings['width']) . '; border-collapse: collapse;">';
+        $min_in = isset($settings['min_in']) ? (int) $settings['min_in'] : 0;
+        $min_out = isset($settings['min_out']) ? (int) $settings['min_out'] : 0;
+        $filtered_ranking = [];
+
+        foreach ($ranking as $site) {
+            $total_in = (int) $site->total_in;
+            $total_out = (int) $site->total_out;
+
+            if ($settings['show_in'] && $total_in < $min_in) {
+                continue;
+            }
+            if ($settings['show_out'] && $total_out < $min_out) {
+                continue;
+            }
+
+            $filtered_ranking[] = $site;
+        }
+
+        $table_width = absint($settings['width']);
+        $table_height = absint($settings['height']);
+        $wrapper_style = 'width: ' . $table_width . 'px; max-height: ' . $table_height . 'px; overflow: auto;';
+
+        $output = '<div class="re-access-ranking-table-wrapper" style="' . esc_attr($wrapper_style) . '">';
+        $output .= '<table class="re-access-ranking-table" style="width: 100%; border-collapse: collapse;">';
         $output .= '<thead>';
         $output .= '<tr style="background: ' . esc_attr($settings['head_bg']) . '; color: ' . esc_attr($settings['text']) . ';">';
         $output .= '<th style="padding: 10px; border: 1px solid #ddd;">' . esc_html__('Rank', 're-access') . '</th>';
         $output .= '<th style="padding: 10px; border: 1px solid #ddd;">' . esc_html__('Site', 're-access') . '</th>';
         
         if ($settings['show_in']) {
-            $output .= '<th style="padding: 10px; border: 1px solid #ddd;">' . esc_html__('IN', 're-access') . '</th>';
+            $output .= '<th style="padding: 10px; border: 1px solid #ddd;">' . esc_html__('流入', 're-access') . '</th>';
         }
         if ($settings['show_out']) {
-            $output .= '<th style="padding: 10px; border: 1px solid #ddd;">' . esc_html__('OUT', 're-access') . '</th>';
+            $output .= '<th style="padding: 10px; border: 1px solid #ddd;">' . esc_html__('流出', 're-access') . '</th>';
         }
         
         $output .= '</tr>';
         $output .= '</thead>';
         $output .= '<tbody>';
         
-        if (!empty($ranking)) {
+        if (!empty($filtered_ranking)) {
             $rank = 1;
-            foreach ($ranking as $site) {
+            foreach ($filtered_ranking as $site) {
                 $site_url = $site->site_url;
                 if (class_exists('RE_Access_Tracker')) {
                     $site_url = RE_Access_Tracker::get_outgoing_url($site->site_url);
@@ -219,10 +236,10 @@ class RE_Access_Ranking {
                 $output .= '<td style="padding: 10px; border: 1px solid #ddd;"><a href="' . esc_url($site_url) . '" target="_blank" style="color: ' . esc_attr($settings['accent']) . ';">' . esc_html($site->site_name) . '</a></td>';
                 
                 if ($settings['show_in']) {
-                    $output .= '<td style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html(number_format($site->total_in)) . '</td>';
+                    $output .= '<td style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html(number_format((int) $site->total_in)) . '</td>';
                 }
                 if ($settings['show_out']) {
-                    $output .= '<td style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html(number_format($site->total_out)) . '</td>';
+                    $output .= '<td style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html(number_format((int) $site->total_out)) . '</td>';
                 }
                 
                 $output .= '</tr>';
@@ -235,6 +252,7 @@ class RE_Access_Ranking {
         
         $output .= '</tbody>';
         $output .= '</table>';
+        $output .= '</div>';
         
         return $output;
     }
@@ -248,12 +266,13 @@ class RE_Access_Ranking {
             'limit' => '10',
             'show_in' => '1',
             'show_out' => '1',
-            'width' => '100%',
+            'min_in' => '0',
+            'min_out' => '0',
+            'width' => '600',
+            'height' => '400',
             'accent' => '#0073aa',
             'head_bg' => '#333333',
-            'text' => '#ffffff',
-            'html_template' => '<div class="ranking-list">[ranking_items]</div>',
-            'css_template' => '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }'
+            'text' => '#ffffff'
         ];
 
         $saved = get_option('re_access_ranking_settings', []);
@@ -273,80 +292,16 @@ class RE_Access_Ranking {
             'limit' => (int)$_POST['limit'],
             'show_in' => isset($_POST['show_in']) ? '1' : '0',
             'show_out' => isset($_POST['show_out']) ? '1' : '0',
-            'width' => sanitize_text_field($_POST['width']),
+            'min_in' => isset($_POST['min_in']) ? (int) $_POST['min_in'] : 0,
+            'min_out' => isset($_POST['min_out']) ? (int) $_POST['min_out'] : 0,
+            'width' => absint($_POST['width']),
+            'height' => absint($_POST['height']),
             'accent' => sanitize_hex_color($_POST['accent']),
             'head_bg' => sanitize_hex_color($_POST['head_bg']),
             'text' => sanitize_hex_color($_POST['text']),
-            'html_template' => isset($_POST['html_template']) ? wp_kses_post($_POST['html_template']) : '<div class="ranking-list">[ranking_items]</div>',
-            'css_template' => isset($_POST['css_template']) ? self::sanitize_css($_POST['css_template']) : '.re-access-ranking-item { padding: 10px; border-bottom: 1px solid #ddd; }',
         ];
 
         update_option('re_access_ranking_settings', $settings);
-    }
-    
-    /**
-     * Render ranking with templates
-     */
-    private static function render_ranking_with_templates($ranking, $settings) {
-        if (!$settings['show_in'] && !$settings['show_out']) {
-            return '';
-        }
-
-        // Generate ranking items HTML
-        $items_html = '';
-        
-        if (!empty($ranking)) {
-            $rank = 1;
-            foreach ($ranking as $site) {
-                $site_url = $site->site_url;
-                if (class_exists('RE_Access_Tracker')) {
-                    $site_url = RE_Access_Tracker::get_outgoing_url($site->site_url);
-                }
-
-                // Create individual item HTML with generic wrapper
-                $item = '<div class="re-access-ranking-item" data-rank="' . esc_attr($rank) . '">';
-                $item .= '<span class="rank">' . esc_html($rank) . '</span> ';
-                $item .= '<a href="' . esc_url($site_url) . '" target="_blank" style="color: ' . esc_attr($settings['accent']) . ';">';
-                $item .= esc_html($site->site_name);
-                $item .= '</a>';
-                
-                if ($settings['show_in']) {
-                    $item .= ' <span class="in-count">IN: ' . esc_html(number_format($site->total_in)) . '</span>';
-                }
-                if ($settings['show_out']) {
-                    $item .= ' <span class="out-count">OUT: ' . esc_html(number_format($site->total_out)) . '</span>';
-                }
-                
-                $item .= '</div>';
-                $items_html .= $item;
-                $rank++;
-            }
-        } else {
-            $items_html = '<div class="no-data">' . esc_html__('No data available', 're-access') . '</div>';
-        }
-        
-        // Replace [ranking_items] placeholder (only first occurrence for safety)
-        $html = $settings['html_template'];
-        $placeholder_pos = strpos($html, '[ranking_items]');
-        if ($placeholder_pos !== false) {
-            $html = substr_replace($html, $items_html, $placeholder_pos, strlen('[ranking_items]'));
-        } else {
-            // Fallback: if placeholder not found, wrap items in default container
-            $html = '<div class="ranking-list">' . $items_html . '</div>';
-        }
-        
-        // Sanitize CSS before output
-        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
-        // The sanitize_css() method already strips tags and removes dangerous patterns
-        $css = '<style>' . self::sanitize_css($settings['css_template']) . '</style>';
-        
-        // Wrap in a container with class (HTML already sanitized during save)
-        $output = '<div class="re-access-ranking">';
-        $output .= $css;
-        $output .= $html;
-        $output .= '</div>';
-        
-        return $output;
     }
     
     /**
@@ -356,7 +311,7 @@ class RE_Access_Ranking {
         $settings = self::get_settings();
         
         $ranking = self::get_ranking_data($settings['period'], $settings['limit']);
-        $output = self::render_ranking_with_templates($ranking, $settings);
+        $output = self::render_ranking_table($ranking, $settings);
         
         return apply_filters('re_access_ranking_output', $output, $settings, $ranking);
     }

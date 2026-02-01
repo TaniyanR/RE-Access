@@ -197,8 +197,9 @@ class RE_Access_Link_Slots {
             'site_id' => 0
         ], $atts);
         
-        $slot = max(1, min(10, (int)$atts['slot']));
-        $site_id = (int)$atts['site_id'];
+        $slot = absint($atts['slot']);
+        $slot = max(1, min(10, $slot));
+        $site_id = absint($atts['site_id']);
         
         // Get slot template
         $slot_data = self::get_slot_data($slot);
@@ -213,7 +214,10 @@ class RE_Access_Link_Slots {
                 $site_id
             ));
         } else {
-            $site = null;
+            $site = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id DESC LIMIT 1",
+                $slot
+            ));
         }
         
         if (!$site) {
