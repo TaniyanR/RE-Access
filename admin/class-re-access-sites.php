@@ -306,8 +306,12 @@ class RE_Access_Sites {
         $site_url = isset($_POST['site_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url'])) : '';
         $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
         $site_name = isset($_POST['site_name']) ? sanitize_text_field(wp_unslash($_POST['site_name'])) : '';
-        $link_slots = self::sanitize_slots(isset($_POST['link_slots']) ? $_POST['link_slots'] : []);
-        $rss_slots = self::sanitize_slots(isset($_POST['rss_slots']) ? $_POST['rss_slots'] : []);
+        $link_slots = (isset($_POST['link_slots']) && is_array($_POST['link_slots']))
+            ? self::sanitize_slots($_POST['link_slots'])
+            : [];
+        $rss_slots = (isset($_POST['rss_slots']) && is_array($_POST['rss_slots']))
+            ? self::sanitize_slots($_POST['rss_slots'])
+            : [];
         
         $wpdb->insert($table, [
             'site_name' => $site_name,
@@ -416,8 +420,12 @@ class RE_Access_Sites {
         $site_url = isset($_POST['site_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url'])) : '';
         $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
         $site_name = isset($_POST['site_name']) ? sanitize_text_field(wp_unslash($_POST['site_name'])) : '';
-        $link_slots = self::sanitize_slots(isset($_POST['link_slots']) ? $_POST['link_slots'] : []);
-        $rss_slots = self::sanitize_slots(isset($_POST['rss_slots']) ? $_POST['rss_slots'] : []);
+        $link_slots = (isset($_POST['link_slots']) && is_array($_POST['link_slots']))
+            ? self::sanitize_slots($_POST['link_slots'])
+            : [];
+        $rss_slots = (isset($_POST['rss_slots']) && is_array($_POST['rss_slots']))
+            ? self::sanitize_slots($_POST['rss_slots'])
+            : [];
         
         $wpdb->update($table, [
             'site_name' => $site_name,
@@ -447,18 +455,15 @@ class RE_Access_Sites {
             return [];
         }
 
-        $sanitized = [];
-        foreach ($slots as $slot) {
-            $value = absint(wp_unslash($slot));
-            if ($value >= 1 && $value <= 8) {
-                $sanitized[] = $value;
-            }
-        }
+        $slots = wp_unslash($slots);
+        $slots = array_map('absint', $slots);
+        $slots = array_filter($slots, static function ($value) {
+            return $value >= 1 && $value <= 8;
+        });
+        $slots = array_values(array_unique($slots));
+        sort($slots, SORT_NUMERIC);
 
-        $sanitized = array_values(array_unique($sanitized));
-        sort($sanitized, SORT_NUMERIC);
-
-        return $sanitized;
+        return $slots;
     }
 
     /**
