@@ -138,7 +138,7 @@ class RE_Access_Ranking {
                     </a>
                 </div>
                 
-                <?php echo self::render_ranking_table($ranking, $settings); ?>
+                <?php echo self::render_ranking_table($ranking, $settings, true); ?>
             </div>
         </div>
         <?php
@@ -214,7 +214,7 @@ class RE_Access_Ranking {
             }
         }
 
-        set_transient($cache_key, $priorities, 10 * MINUTE_IN_SECONDS);
+        set_transient($cache_key, $priorities, 20 * MINUTE_IN_SECONDS);
 
         return $priorities;
     }
@@ -222,7 +222,7 @@ class RE_Access_Ranking {
     /**
      * Render ranking table
      */
-    public static function render_ranking_table($ranking, $settings) {
+    public static function render_ranking_table($ranking, $settings, $is_preview = false) {
         if (!$settings['show_in'] && !$settings['show_out']) {
             return '';
         }
@@ -289,9 +289,11 @@ class RE_Access_Ranking {
                 $output .= '</tr>';
                 $rank++;
             }
-        } else {
+        } elseif ($is_preview) {
             $colspan = 2 + ($settings['show_in'] ? 1 : 0) + ($settings['show_out'] ? 1 : 0);
             $output .= '<tr><td colspan="' . $colspan . '" style="padding: 10px; border: 1px solid #ddd; text-align: center;">' . esc_html__('No data available', 're-access') . '<br><span class="description">' . esc_html__('計測データがまだ無いため表示されません。アクセス計測後に反映されます。', 're-access') . '</span></td></tr>';
+        } else {
+            return '';
         }
         
         $output .= '</tbody>';
@@ -355,7 +357,7 @@ class RE_Access_Ranking {
         $settings = self::get_settings();
         
         $ranking = self::get_ranking_data($settings['period'], $settings['limit']);
-        $output = self::render_ranking_table($ranking, $settings);
+        $output = self::render_ranking_table($ranking, $settings, false);
         
         return apply_filters('re_access_ranking_output', $output, $settings, $ranking);
     }

@@ -569,7 +569,7 @@ class RE_Access_Sites {
         $link_map = [];
         $rss_map = [];
 
-        for ($slot = 1; $slot <= 10; $slot++) {
+        for ($slot = 1; $slot <= 8; $slot++) {
             $link_option = get_option('re_access_link_slot_' . $slot);
             $rss_option = get_option('re_access_rss_slot_' . $slot);
 

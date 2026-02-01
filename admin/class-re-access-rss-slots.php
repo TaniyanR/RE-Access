@@ -237,10 +237,47 @@ class RE_Access_RSS_Slots {
         $output = do_shortcode('[reaccess_rss_slot slot="' . absint($slot) . '"]');
 
         if ($output === '') {
-            return '<p>' . esc_html__('RSSが取得できません。サイトのRSS URLとスロット割り当てを確認してください。', 're-access') . '</p>';
+            return '<p>' . esc_html(self::get_preview_notice($slot)) . '</p>';
         }
 
         return $output;
+    }
+
+    /**
+     * Get preview notice message.
+     *
+     * @param int $slot
+     * @return string
+     */
+    private static function get_preview_notice($slot) {
+        global $wpdb;
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
+
+        $assigned_count = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $sites_table WHERE FIND_IN_SET(%d, rss_slots)",
+            $slot
+        ));
+        if ($assigned_count === 0) {
+            return 'RSS URLが未設定、または取得できません。サイトのRSS URLとスロット割り当てを確認してください。';
+        }
+
+        $approved_count = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, rss_slots)",
+            $slot
+        ));
+        if ($approved_count === 0) {
+            return '承認（approved）されていないサイトは表示されません。';
+        }
+
+        $approved_with_rss = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $sites_table WHERE status = 'approved' AND rss_url <> '' AND rss_url IS NOT NULL AND FIND_IN_SET(%d, rss_slots)",
+            $slot
+        ));
+        if ($approved_with_rss === 0) {
+            return 'RSS URLが未設定、または取得できません。サイトのRSS URLとスロット割り当てを確認してください。';
+        }
+
+        return 'RSS URLが未設定、または取得できません。サイトのRSS URLとスロット割り当てを確認してください。';
     }
     
     /**
@@ -277,11 +314,17 @@ class RE_Access_RSS_Slots {
             ));
             if (!empty($sites) && class_exists('RE_Access_Ranking')) {
                 $priorities = RE_Access_Ranking::get_return_priorities();
-                usort($sites, static function ($a, $b) use ($priorities) {
+                $seed = date_i18n('Y-m-d', current_time('timestamp')) . '|' . $slot;
+                usort($sites, static function ($a, $b) use ($priorities, $seed) {
                     $priority_a = $priorities[$a->id] ?? 0;
                     $priority_b = $priorities[$b->id] ?? 0;
                     if ($priority_a === $priority_b) {
-                        return $b->id <=> $a->id;
+                        $tie_a = crc32($seed . '|' . $a->id);
+                        $tie_b = crc32($seed . '|' . $b->id);
+                        if ($tie_a === $tie_b) {
+                            return $b->id <=> $a->id;
+                        }
+                        return $tie_a <=> $tie_b;
                     }
                     return $priority_b <=> $priority_a;
                 });
@@ -331,8 +374,16 @@ class RE_Access_RSS_Slots {
                 $item['site_url'] = $site->site_url;
                 $item_url = $item['url'];
                 if (!empty($item_url)) {
-                    if (!isset($unique_items[$item_url]) || $item['timestamp'] > $unique_items[$item_url]['timestamp']) {
-                        $unique_items[$item_url] = $item;
+                    $item_url_key = strtolower(trim($item_url));
+                    if (
+                        !isset($unique_items[$item_url_key])
+                        || $item['timestamp'] > $unique_items[$item_url_key]['timestamp']
+                        || (
+                            $item['timestamp'] === $unique_items[$item_url_key]['timestamp']
+                            && strcmp($item['title'], $unique_items[$item_url_key]['title']) < 0
+                        )
+                    ) {
+                        $unique_items[$item_url_key] = $item;
                     }
                 } else {
                     $merged_items[] = $item;
@@ -351,7 +402,15 @@ class RE_Access_RSS_Slots {
         usort($merged_items, static function ($a, $b) {
             $time_a = (int) ($a['timestamp'] ?? 0);
             $time_b = (int) ($b['timestamp'] ?? 0);
-            return $time_b <=> $time_a;
+            if ($time_a !== $time_b) {
+                return $time_b <=> $time_a;
+            }
+            $url_a = (string) ($a['url'] ?? '');
+            $url_b = (string) ($b['url'] ?? '');
+            if ($url_a !== $url_b) {
+                return strcmp($url_a, $url_b);
+            }
+            return strcmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''));
         });
 
         $merged_items = array_slice($merged_items, 0, (int) $slot_data['item_count']);
@@ -407,6 +466,7 @@ class RE_Access_RSS_Slots {
         }
         
         $items = [];
+        $min_timestamp = null;
         $feed_items = $feed->get_items(0, $limit);
         
         foreach ($feed_items as $item) {
@@ -435,18 +495,102 @@ class RE_Access_RSS_Slots {
                 }
             }
             
+            $timestamp = self::extract_item_timestamp($item);
+            $has_date = $timestamp > 0;
+            if ($has_date) {
+                $min_timestamp = $min_timestamp === null ? $timestamp : min($min_timestamp, $timestamp);
+            }
+
             $items[] = [
                 'title' => $item->get_title(),
                 'url' => $item->get_permalink(),
-                'date' => $item->get_date('Y-m-d'),
-                'timestamp' => (int) $item->get_date('U'),
+                'date' => $has_date ? date_i18n('Y-m-d', $timestamp) : '',
+                'timestamp' => $timestamp,
+                'has_date' => $has_date,
                 'image' => $image
             ];
+        }
+
+        if (!empty($items)) {
+            $fallback_base = $min_timestamp !== null
+                ? $min_timestamp - 1
+                : current_time('timestamp') - 1;
+            $fallback_offset = 0;
+            foreach ($items as &$item) {
+                if (empty($item['has_date'])) {
+                    $item['timestamp'] = $fallback_base - $fallback_offset;
+                    $fallback_offset++;
+                }
+                unset($item['has_date']);
+            }
+            unset($item);
         }
         
         // Cache the results (convert minutes to seconds)
         set_transient($cache_key, $items, $cache_duration * 60);
         
         return $items;
+    }
+
+    /**
+     * Extract timestamp from RSS item, handling missing or non-standard formats.
+     *
+     * @param SimplePie_Item $item
+     * @return int
+     */
+    private static function extract_item_timestamp($item) {
+        $timestamp = $item->get_date('U');
+        if (!empty($timestamp)) {
+            return (int) $timestamp;
+        }
+
+        $candidates = [];
+        $candidates[] = $item->get_date('c');
+        $candidates[] = $item->get_date('r');
+        $candidates[] = $item->get_date('Y-m-d H:i:s');
+
+        $candidates = array_merge(
+            $candidates,
+            self::get_item_tag_dates($item, 'http://purl.org/dc/elements/1.1/', 'date'),
+            self::get_item_tag_dates($item, 'http://purl.org/dc/terms/', 'date'),
+            self::get_item_tag_dates($item, SIMPLEPIE_NAMESPACE_ATOM_10, 'updated'),
+            self::get_item_tag_dates($item, SIMPLEPIE_NAMESPACE_ATOM_10, 'published')
+        );
+
+        foreach ($candidates as $candidate) {
+            if (empty($candidate)) {
+                continue;
+            }
+            $parsed = strtotime($candidate);
+            if ($parsed !== false) {
+                return (int) $parsed;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Fetch date values from item tags.
+     *
+     * @param SimplePie_Item $item
+     * @param string $namespace
+     * @param string $tag
+     * @return array
+     */
+    private static function get_item_tag_dates($item, $namespace, $tag) {
+        $dates = [];
+        $tags = $item->get_item_tags($namespace, $tag);
+        if (empty($tags)) {
+            return $dates;
+        }
+
+        foreach ($tags as $tag_data) {
+            if (!empty($tag_data['data'])) {
+                $dates[] = $tag_data['data'];
+            }
+        }
+
+        return $dates;
     }
 }
