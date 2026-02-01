@@ -322,9 +322,7 @@ class RE_Access_Sites {
             'status' => 'pending'
         ]);
 
-        if (!empty($wpdb->insert_id)) {
-            self::enforce_slot_exclusivity((int) $wpdb->insert_id, $link_slots, $rss_slots);
-        }
+        // Slot exclusivity removed: multiple sites can share the same slot.
         
         // Create notice
         RE_Access_Notices::add_notice('site_registered', sprintf(
@@ -435,7 +433,7 @@ class RE_Access_Sites {
             'rss_slots' => self::slots_to_csv($rss_slots),
         ], ['id' => $site_id]);
 
-        self::enforce_slot_exclusivity($site_id, $link_slots, $rss_slots);
+        // Slot exclusivity removed: multiple sites can share the same slot.
         
         // Clear approved sites cache
         delete_transient('re_access_approved_sites');

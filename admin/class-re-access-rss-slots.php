@@ -266,54 +266,73 @@ class RE_Access_RSS_Slots {
                 "SELECT * FROM $sites_table WHERE id = %d AND status = 'approved'",
                 $site_id
             ));
+            $sites = $site ? [$site] : [];
         } else {
-            $site = $wpdb->get_row($wpdb->prepare(
-                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, rss_slots) ORDER BY id DESC LIMIT 1",
+            $sites = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, rss_slots) ORDER BY id DESC",
                 $slot
             ));
         }
         
-        if (!$site || empty($site->rss_url)) {
-            return '';
-        }
-        
-        // Fetch RSS feed with caching
-        $feed_items = self::fetch_rss_feed($site->rss_url, $slot_data['item_count'], $slot_data['cache_duration']);
-        
-        if (empty($feed_items)) {
+        if (empty($sites)) {
             return '';
         }
         
         $css = $slot_data['css_template'];
-        // Sanitize CSS before output
-        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
-        // The sanitize_css() method already strips tags and removes dangerous patterns
-        $output = '<style>' . self::sanitize_css($css) . '</style>';
+        $css_output = '<style>' . self::sanitize_css($css) . '</style>';
+        $output = '';
+        $feed_items_by_site = [];
         
-        foreach ($feed_items as $item) {
-            $html = $slot_data['html_template'];
-            
-            // Replace variables
-            if (!empty($item['image'])) {
-                $html = str_replace('[rr_item_image]', '<img src="' . esc_url($item['image']) . '" alt="' . esc_attr($item['title']) . '">', $html);
-            } else {
-                // Remove image placeholder if no image
-                $html = str_replace('[rr_item_image]', '', $html);
+        foreach ($sites as $site) {
+            if (empty($site->rss_url)) {
+                continue;
             }
-            
-            $html = str_replace('[rr_site_name]', esc_html($site->site_name), $html);
-            $html = str_replace('[rr_item_title]', esc_html($item['title']), $html);
-            $item_url = $item['url'];
-            if (class_exists('RE_Access_Tracker')) {
-                $item_url = RE_Access_Tracker::get_outgoing_url($item['url']);
+
+            // Fetch RSS feed with caching
+            $feed_items = self::fetch_rss_feed($site->rss_url, $slot_data['item_count'], $slot_data['cache_duration']);
+        
+            if (empty($feed_items)) {
+                continue;
             }
-            $html = str_replace('[rr_item_url]', esc_url($item_url), $html);
-            $html = str_replace('[rr_item_date]', esc_html($item['date']), $html);
-            
-            $output .= $html;
+
+            if ($output === '') {
+                // Sanitize CSS before output
+                // Note: CSS is not HTML-escaped as it would break valid CSS syntax
+                // The sanitize_css() method already strips tags and removes dangerous patterns
+                $output = $css_output;
+            }
+
+            $feed_items_by_site[$site->id] = $feed_items;
+
+            foreach ($feed_items as $item) {
+                $html = $slot_data['html_template'];
+
+                // Replace variables
+                if (!empty($item['image'])) {
+                    $html = str_replace('[rr_item_image]', '<img src="' . esc_url($item['image']) . '" alt="' . esc_attr($item['title']) . '">', $html);
+                } else {
+                    // Remove image placeholder if no image
+                    $html = str_replace('[rr_item_image]', '', $html);
+                }
+
+                $html = str_replace('[rr_site_name]', esc_html($site->site_name), $html);
+                $html = str_replace('[rr_item_title]', esc_html($item['title']), $html);
+                $item_url = $item['url'];
+                if (class_exists('RE_Access_Tracker')) {
+                    $item_url = RE_Access_Tracker::get_outgoing_url($item['url']);
+                }
+                $html = str_replace('[rr_item_url]', esc_url($item_url), $html);
+                $html = str_replace('[rr_item_date]', esc_html($item['date']), $html);
+
+                $output .= $html;
+            }
         }
         
-        return apply_filters('re_access_rss_slot_output', $output, $atts, $site, $feed_items);
+        if ($output === '') {
+            return '';
+        }
+        
+        return apply_filters('re_access_rss_slot_output', $output, $atts, $sites, $feed_items_by_site);
     }
     
     /**
