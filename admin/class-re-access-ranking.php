@@ -174,6 +174,50 @@ class RE_Access_Ranking {
         
         return $results ?: [];
     }
+
+    /**
+     * Get return priorities for sites based on IN-OUT over a period.
+     *
+     * @param int|null $period
+     * @return array<int,int>
+     */
+    public static function get_return_priorities($period = null) {
+        $settings = self::get_settings();
+        $period = $period === null ? (int) $settings['period'] : (int) $period;
+        $period = max(1, $period);
+        $cache_key = 're_access_return_priority_' . $period;
+
+        $cached = get_transient($cache_key);
+        if ($cached !== false && is_array($cached)) {
+            return $cached;
+        }
+
+        global $wpdb;
+        $tracking_table = $wpdb->prefix . 'reaccess_site_daily';
+        $interval = $period - 1;
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT site_id, SUM(`in`) as total_in, SUM(`out`) as total_out
+             FROM $tracking_table
+             WHERE date >= DATE_SUB(CURDATE(), INTERVAL %d DAY)
+             GROUP BY site_id",
+            $interval
+        ));
+
+        $priorities = [];
+        if ($rows) {
+            foreach ($rows as $row) {
+                $total_in = (int) $row->total_in;
+                $total_out = (int) $row->total_out;
+                $priority = max(0, $total_in - $total_out);
+                $priorities[(int) $row->site_id] = $priority;
+            }
+        }
+
+        set_transient($cache_key, $priorities, 10 * MINUTE_IN_SECONDS);
+
+        return $priorities;
+    }
     
     /**
      * Render ranking table
