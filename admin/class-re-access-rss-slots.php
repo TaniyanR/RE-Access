@@ -2,7 +2,7 @@
 /**
  * RSS slot management
  *
- * Provides 10 configurable RSS feed slots with:
+ * Provides 8 configurable RSS feed slots with:
  * - Tab-based admin interface
  * - Configurable item count (1-50)
  * - HTML/CSS template editors
@@ -31,7 +31,7 @@ class RE_Access_RSS_Slots {
         }
         
         $current_slot = isset($_GET['slot']) ? (int)$_GET['slot'] : 1;
-        $current_slot = max(1, min(10, $current_slot));
+        $current_slot = max(1, min(8, $current_slot));
         
         $slot_data = self::get_slot_data($current_slot);
         
@@ -49,7 +49,7 @@ class RE_Access_RSS_Slots {
             
             <!-- Slot Tabs -->
             <div class="nav-tab-wrapper" style="margin: 20px 0;">
-                <?php for ($i = 1; $i <= 10; $i++): ?>
+                <?php for ($i = 1; $i <= 8; $i++): ?>
                     <a href="?page=re-access-rss-slots&slot=<?php echo $i; ?>" 
                        class="nav-tab <?php echo $current_slot == $i ? 'nav-tab-active' : ''; ?>">
                         <?php printf(esc_html__('Slot %d', 're-access'), $i); ?>
@@ -117,7 +117,7 @@ class RE_Access_RSS_Slots {
             <!-- Preview -->
             <div style="background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin: 20px 0;">
                 <h2><?php esc_html_e('Preview', 're-access'); ?></h2>
-                <?php echo self::render_preview($slot_data); ?>
+                <?php echo self::render_preview($current_slot); ?>
             </div>
         </div>
         <?php
@@ -212,6 +212,9 @@ class RE_Access_RSS_Slots {
      */
     private static function save_slot() {
         $slot = (int)$_POST['slot_number'];
+        if ($slot < 1 || $slot > 8) {
+            return;
+        }
         
         $data = [
             'description' => sanitize_text_field($_POST['description']),
@@ -227,31 +230,13 @@ class RE_Access_RSS_Slots {
     /**
      * Render preview
      */
-    private static function render_preview($slot_data) {
-        $html = $slot_data['html_template'];
-        $css = $slot_data['css_template'];
-        
-        // Sample data for preview (with image)
-        $html1 = str_replace('[rr_item_image]', '<img src="https://via.placeholder.com/100" alt="Sample">', $html);
-        $html1 = str_replace('[rr_site_name]', 'Example Site', $html1);
-        $html1 = str_replace('[rr_item_title]', 'Sample RSS Article with Image', $html1);
-        $html1 = str_replace('[rr_item_url]', 'https://example.com/article', $html1);
-        $html1 = str_replace('[rr_item_date]', date('Y-m-d'), $html1);
-        
-        // Sample data for preview (without image - text only)
-        $html2 = str_replace('[rr_item_image]', '', $html);
-        $html2 = str_replace('[rr_site_name]', 'Example Site', $html2);
-        $html2 = str_replace('[rr_item_title]', 'Sample RSS Article without Image', $html2);
-        $html2 = str_replace('[rr_item_url]', 'https://example.com/article2', $html2);
-        $html2 = str_replace('[rr_item_date]', date('Y-m-d'), $html2);
-        
-        // Sanitize CSS before output
-        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
-        // The sanitize_css() method already strips tags and removes dangerous patterns
-        $output = '<style>' . self::sanitize_css($css) . '</style>';
-        $output .= $html1;
-        $output .= $html2;
-        
+    private static function render_preview($slot) {
+        $output = do_shortcode('[reaccess_rss_slot slot="' . absint($slot) . '"]');
+
+        if ($output === '') {
+            return '<p>' . esc_html__('RSSが取得できません。サイトのRSS URLとスロット割り当てを確認してください。', 're-access') . '</p>';
+        }
+
         return $output;
     }
     
@@ -265,7 +250,9 @@ class RE_Access_RSS_Slots {
         ], $atts);
         
         $slot = absint($atts['slot']);
-        $slot = max(1, min(10, $slot));
+        if ($slot < 1 || $slot > 8) {
+            return '';
+        }
         $site_id = absint($atts['site_id']);
         
         // Get slot template

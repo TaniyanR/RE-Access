@@ -22,7 +22,7 @@ class RE_Access_Link_Slots {
         }
         
         $current_slot = isset($_GET['slot']) ? (int)$_GET['slot'] : 1;
-        $current_slot = max(1, min(10, $current_slot));
+        $current_slot = max(1, min(8, $current_slot));
         
         $slot_data = self::get_slot_data($current_slot);
         
@@ -32,7 +32,7 @@ class RE_Access_Link_Slots {
             
             <!-- Slot Tabs -->
             <div class="nav-tab-wrapper" style="margin: 20px 0;">
-                <?php for ($i = 1; $i <= 10; $i++): ?>
+                <?php for ($i = 1; $i <= 8; $i++): ?>
                     <a href="?page=re-access-link-slots&slot=<?php echo $i; ?>" 
                        class="nav-tab <?php echo $current_slot == $i ? 'nav-tab-active' : ''; ?>">
                         <?php printf(esc_html__('Slot %d', 're-access'), $i); ?>
@@ -85,7 +85,7 @@ class RE_Access_Link_Slots {
             <!-- Preview -->
             <div style="background: #fff; padding: 20px; border: 1px solid #ccc; border-radius: 5px; margin: 20px 0;">
                 <h2><?php esc_html_e('Preview', 're-access'); ?></h2>
-                <?php echo self::render_preview($slot_data); ?>
+                <?php echo self::render_preview($current_slot); ?>
             </div>
         </div>
         <?php
@@ -157,6 +157,9 @@ class RE_Access_Link_Slots {
      */
     private static function save_slot() {
         $slot = (int)$_POST['slot_number'];
+        if ($slot < 1 || $slot > 8) {
+            return;
+        }
         
         $data = [
             'description' => sanitize_text_field($_POST['description']),
@@ -170,21 +173,13 @@ class RE_Access_Link_Slots {
     /**
      * Render preview
      */
-    private static function render_preview($slot_data) {
-        $html = $slot_data['html_template'];
-        $css = $slot_data['css_template'];
-        
-        // Sample data for preview
-        $html = str_replace('[rr_site_name]', 'Example Site', $html);
-        $html = str_replace('[rr_site_url]', 'https://example.com', $html);
-        $html = str_replace('[rr_site_desc]', 'This is an example site description for preview purposes.', $html);
-        
-        // Sanitize CSS before output
-        // Note: CSS is not HTML-escaped as it would break valid CSS syntax
-        // The sanitize_css() method already strips tags and removes dangerous patterns
-        $output = '<style>' . self::sanitize_css($css) . '</style>';
-        $output .= $html;
-        
+    private static function render_preview($slot) {
+        $output = do_shortcode('[reaccess_link_slot slot="' . absint($slot) . '"]');
+
+        if ($output === '') {
+            return '<p>' . esc_html__('このスロットに割り当てられたサイトがありません。サイト編集でスロットを割り当ててください。', 're-access') . '</p>';
+        }
+
         return $output;
     }
     
@@ -198,7 +193,9 @@ class RE_Access_Link_Slots {
         ], $atts);
         
         $slot = absint($atts['slot']);
-        $slot = max(1, min(10, $slot));
+        if ($slot < 1 || $slot > 8) {
+            return '';
+        }
         $site_id = absint($atts['site_id']);
         
         // Get slot template
