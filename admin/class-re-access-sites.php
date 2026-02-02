@@ -115,6 +115,21 @@ class RE_Access_Sites {
                                 <td><input type="url" name="rss_url" value="<?php echo esc_attr($edit_site->rss_url); ?>" class="regular-text"></td>
                             </tr>
                             <tr>
+                                <th><?php echo esc_html__('リンクスロット割り当て', 're-access'); ?></th>
+                                <td>
+                                    <?php $selected_link_slots = self::parse_slots_csv($edit_site->link_slots ?? ''); ?>
+                                    <fieldset>
+                                        <?php for ($slot = 1; $slot <= 8; $slot++): ?>
+                                            <label style="display: inline-block; margin-right: 10px;">
+                                                <input type="checkbox" name="link_slots[]" value="<?php echo esc_attr($slot); ?>" <?php checked(in_array($slot, $selected_link_slots, true)); ?>>
+                                                <?php printf(esc_html__('スロット%d', 're-access'), $slot); ?>
+                                            </label>
+                                        <?php endfor; ?>
+                                    </fieldset>
+                                    <p class="description"><?php echo esc_html__('このサイトをショートコードで表示するためのリンクスロットに割り当てます。', 're-access'); ?></p>
+                                </td>
+                            </tr>
+                            <tr>
                                 <th><?php echo esc_html__('統合URL（別名URL）', 're-access'); ?></th>
                                 <td>
                                     <textarea name="url_aliases" rows="4" class="large-text code"><?php echo esc_textarea($alias_value); ?></textarea>
@@ -150,6 +165,20 @@ class RE_Access_Sites {
                             <tr>
                                 <th><?php esc_html_e('RSS URL', 're-access'); ?></th>
                                 <td><input type="url" name="rss_url" class="regular-text"></td>
+                            </tr>
+                            <tr>
+                                <th><?php echo esc_html__('リンクスロット割り当て', 're-access'); ?></th>
+                                <td>
+                                    <fieldset>
+                                        <?php for ($slot = 1; $slot <= 8; $slot++): ?>
+                                            <label style="display: inline-block; margin-right: 10px;">
+                                                <input type="checkbox" name="link_slots[]" value="<?php echo esc_attr($slot); ?>">
+                                                <?php printf(esc_html__('スロット%d', 're-access'), $slot); ?>
+                                            </label>
+                                        <?php endfor; ?>
+                                    </fieldset>
+                                    <p class="description"><?php echo esc_html__('このサイトをショートコードで表示するためのリンクスロットに割り当てます。', 're-access'); ?></p>
+                                </td>
                             </tr>
                             <tr>
                                 <th><?php echo esc_html__('統合URL（別名URL）', 're-access'); ?></th>
@@ -278,6 +307,7 @@ class RE_Access_Sites {
         $site_url = isset($_POST['site_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url'])) : '';
         $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
         $site_name = isset($_POST['site_name']) ? sanitize_text_field(wp_unslash($_POST['site_name'])) : '';
+        $link_slots = isset($_POST['link_slots']) ? self::sanitize_slot_assignments(wp_unslash($_POST['link_slots'])) : '';
         $alias_input = isset($_POST['url_aliases']) ? wp_unslash($_POST['url_aliases']) : '';
         $canonical = RE_Access_Database::normalize_url($site_url);
         $aliases = self::sanitize_aliases_input($alias_input, $canonical);
@@ -286,6 +316,7 @@ class RE_Access_Sites {
             'site_name' => $site_name,
             'site_url' => $site_url,
             'rss_url' => $rss_url,
+            'link_slots' => $link_slots,
             'url_aliases' => self::aliases_to_csv($aliases),
             'status' => 'pending'
         ]);
@@ -394,6 +425,7 @@ class RE_Access_Sites {
         $site_url = isset($_POST['site_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['site_url'])) : '';
         $rss_url = isset($_POST['rss_url']) ? RE_Access_Database::sanitize_url_for_storage(wp_unslash($_POST['rss_url'])) : '';
         $site_name = isset($_POST['site_name']) ? sanitize_text_field(wp_unslash($_POST['site_name'])) : '';
+        $link_slots = isset($_POST['link_slots']) ? self::sanitize_slot_assignments(wp_unslash($_POST['link_slots'])) : '';
         $alias_input = isset($_POST['url_aliases']) ? wp_unslash($_POST['url_aliases']) : '';
         $canonical = RE_Access_Database::normalize_url($site_url);
         $aliases = self::sanitize_aliases_input($alias_input, $canonical);
@@ -402,6 +434,7 @@ class RE_Access_Sites {
             'site_name' => $site_name,
             'site_url' => $site_url,
             'rss_url' => $rss_url,
+            'link_slots' => $link_slots,
             'url_aliases' => self::aliases_to_csv($aliases),
         ], ['id' => $site_id]);
 
@@ -503,6 +536,49 @@ class RE_Access_Sites {
         }
 
         return implode("\n", $aliases);
+    }
+
+    /**
+     * Parse slot CSV string into integer list.
+     *
+     * @param string $csv
+     * @return array
+     */
+    private static function parse_slots_csv($csv) {
+        if (empty($csv) || !is_string($csv)) {
+            return [];
+        }
+
+        $parts = array_filter(array_map('absint', explode(',', $csv)));
+        $parts = array_values(array_unique($parts));
+        $parts = array_filter($parts, static function ($slot) {
+            return $slot >= 1 && $slot <= 8;
+        });
+
+        sort($parts, SORT_NUMERIC);
+
+        return $parts;
+    }
+
+    /**
+     * Sanitize slot assignments.
+     *
+     * @param mixed $input
+     * @return string
+     */
+    private static function sanitize_slot_assignments($input) {
+        if (!is_array($input)) {
+            return '';
+        }
+
+        $slots = array_map('absint', $input);
+        $slots = array_filter($slots, static function ($slot) {
+            return $slot >= 1 && $slot <= 8;
+        });
+        $slots = array_values(array_unique($slots));
+        sort($slots, SORT_NUMERIC);
+
+        return empty($slots) ? '' : implode(',', $slots);
     }
 
     /**

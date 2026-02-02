@@ -192,7 +192,7 @@ class RE_Access_Link_Slots {
      * @return string
      */
     private static function get_preview_notice($slot) {
-        return '表示できる承認済みサイトがありません。';
+        return 'このスロットに割り当てられたサイトがありません。サイト編集でリンクスロットを割り当ててください。';
     }
     
     /**
@@ -224,11 +224,10 @@ class RE_Access_Link_Slots {
             ));
             $sites = $site ? [$site] : [];
         } else {
-            if (class_exists('RE_Access_Return')) {
-                $sites = RE_Access_Return::get_prioritized_sites('link', self::MAX_SITES_PER_SLOT);
-            } else {
-                $sites = [];
-            }
+            $sites = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id DESC LIMIT 1",
+                $slot
+            ));
         }
         
         if (empty($sites)) {

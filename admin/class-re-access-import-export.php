@@ -518,10 +518,6 @@ class RE_Access_Import_Export {
             $data['link_slots'] = self::sanitize_slot_value($site['link_slots'] ?? '');
         }
 
-        if (in_array('rss_slots', $columns, true)) {
-            $data['rss_slots'] = self::sanitize_slot_value($site['rss_slots'] ?? '');
-        }
-
         if (in_array('status', $columns, true)) {
             $data['status'] = sanitize_text_field($site['status'] ?? 'approved');
         }
