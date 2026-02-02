@@ -47,6 +47,7 @@ $maybe_require = function (string $path) {
 $maybe_require('includes/class-re-access-database.php');
 $maybe_require('includes/class-re-access-tracker.php');
 $maybe_require('includes/class-re-access-notices.php');
+$maybe_require('includes/class-re-access-return.php');
 $maybe_require('admin/class-re-access-dashboard.php');
 $maybe_require('admin/class-re-access-sites.php');
 $maybe_require('admin/class-re-access-ranking.php');

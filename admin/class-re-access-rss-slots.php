@@ -250,34 +250,7 @@ class RE_Access_RSS_Slots {
      * @return string
      */
     private static function get_preview_notice($slot) {
-        global $wpdb;
-        $sites_table = $wpdb->prefix . 'reaccess_sites';
-
-        $assigned_count = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $sites_table WHERE FIND_IN_SET(%d, rss_slots)",
-            $slot
-        ));
-        if ($assigned_count === 0) {
-            return 'RSS URLが未設定、または取得できません。サイトのRSS URLとスロット割り当てを確認してください。';
-        }
-
-        $approved_count = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, rss_slots)",
-            $slot
-        ));
-        if ($approved_count === 0) {
-            return '承認（approved）されていないサイトは表示されません。';
-        }
-
-        $approved_with_rss = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM $sites_table WHERE status = 'approved' AND rss_url <> '' AND rss_url IS NOT NULL AND FIND_IN_SET(%d, rss_slots)",
-            $slot
-        ));
-        if ($approved_with_rss === 0) {
-            return 'RSS URLが未設定、または取得できません。サイトのRSS URLとスロット割り当てを確認してください。';
-        }
-
-        return 'RSS URLが未設定、または取得できません。サイトのRSS URLとスロット割り当てを確認してください。';
+        return 'RSSが取得できません。承認済みサイトのRSS URLを確認してください。';
     }
     
     /**
@@ -308,32 +281,10 @@ class RE_Access_RSS_Slots {
             ));
             $sites = $site ? [$site] : [];
         } else {
-            $sites = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, rss_slots) ORDER BY id DESC",
-                $slot
-            ));
-            if (!empty($sites) && class_exists('RE_Access_Ranking')) {
-                $priorities = RE_Access_Ranking::get_return_priorities();
-                $seed = date_i18n('Y-m-d', current_time('timestamp')) . '|' . $slot;
-                usort($sites, static function ($a, $b) use ($priorities, $seed) {
-                    $priority_a = $priorities[$a->id] ?? 0;
-                    $priority_b = $priorities[$b->id] ?? 0;
-                    if ($priority_a === $priority_b) {
-                        $tie_a = crc32($seed . '|' . $a->id);
-                        $tie_b = crc32($seed . '|' . $b->id);
-                        if ($tie_a === $tie_b) {
-                            return $b->id <=> $a->id;
-                        }
-                        return $tie_a <=> $tie_b;
-                    }
-                    return $priority_b <=> $priority_a;
-                });
-            }
-            $sites = array_values(array_filter($sites, static function ($site) {
-                return !empty($site->rss_url);
-            }));
-            if (count($sites) > self::MAX_SITES_PER_SLOT) {
-                $sites = array_slice($sites, 0, self::MAX_SITES_PER_SLOT);
+            if (class_exists('RE_Access_Return')) {
+                $sites = RE_Access_Return::get_prioritized_sites('rss', self::MAX_SITES_PER_SLOT);
+            } else {
+                $sites = [];
             }
         }
         
