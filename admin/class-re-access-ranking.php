@@ -176,6 +176,16 @@ class RE_Access_Ranking {
     }
 
     /**
+     * Get aggregation period (days) from settings.
+     *
+     * @return int
+     */
+    public static function get_aggregation_period() {
+        $settings = self::get_settings();
+        return max(1, (int) $settings['period']);
+    }
+
+    /**
      * Get return priorities for sites based on IN-OUT over a period.
      *
      * @param int|null $period
