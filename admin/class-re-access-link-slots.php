@@ -12,6 +12,8 @@ if (!defined('WPINC')) {
 class RE_Access_Link_Slots {
 
     private const MAX_SITES_PER_SLOT = 3;
+    private const DEFAULT_DISPLAY_LIMIT = 3;
+    private const DEFAULT_ORDER_MODE = 2;
     
     /**
      * Render link slots page
@@ -72,6 +74,29 @@ class RE_Access_Link_Slots {
                                 <textarea name="css_template" rows="10" class="large-text code"><?php echo esc_textarea($slot_data['css_template']); ?></textarea>
                             </td>
                         </tr>
+                        <tr>
+                            <th><?php esc_html_e('表示件数', 're-access'); ?></th>
+                            <td>
+                                <select name="display_limit">
+                                    <?php for ($i = 0; $i <= 20; $i++): ?>
+                                        <option value="<?php echo esc_attr($i); ?>" <?php selected((int) $slot_data['display_limit'], $i); ?>><?php echo esc_html($i); ?></option>
+                                    <?php endfor; ?>
+                                </select>
+                                <p class="description"><?php esc_html_e('0 を選択すると表示しません。', 're-access'); ?></p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><?php esc_html_e('表示順 (1〜5)', 're-access'); ?></th>
+                            <td>
+                                <select name="order_mode">
+                                    <option value="1" <?php selected((int) $slot_data['order_mode'], 1); ?>><?php esc_html_e('1：あいうえお順', 're-access'); ?></option>
+                                    <option value="2" <?php selected((int) $slot_data['order_mode'], 2); ?>><?php esc_html_e('2：新着順', 're-access'); ?></option>
+                                    <option value="3" <?php selected((int) $slot_data['order_mode'], 3); ?>><?php esc_html_e('3：古い順', 're-access'); ?></option>
+                                    <option value="4" <?php selected((int) $slot_data['order_mode'], 4); ?>><?php esc_html_e('4：ランダム', 're-access'); ?></option>
+                                    <option value="5" <?php selected((int) $slot_data['order_mode'], 5); ?>><?php esc_html_e('5：還元優先', 're-access'); ?></option>
+                                </select>
+                            </td>
+                        </tr>
                     </table>
                     
                     <p class="submit">
@@ -121,7 +146,9 @@ class RE_Access_Link_Slots {
 
 .re-link-slot a:hover {
     text-decoration: underline;
-}'
+}',
+            'display_limit' => self::DEFAULT_DISPLAY_LIMIT,
+            'order_mode' => self::DEFAULT_ORDER_MODE,
         ];
 
         $saved = get_option('re_access_link_slot_' . $slot, []);
@@ -167,6 +194,8 @@ class RE_Access_Link_Slots {
             'description' => sanitize_text_field($_POST['description']),
             'html_template' => wp_kses_post($_POST['html_template']),
             'css_template' => self::sanitize_css($_POST['css_template']),
+            'display_limit' => self::sanitize_display_limit($_POST['display_limit'] ?? self::DEFAULT_DISPLAY_LIMIT),
+            'order_mode' => self::sanitize_order_mode($_POST['order_mode'] ?? self::DEFAULT_ORDER_MODE),
         ];
 
         update_option('re_access_link_slot_' . $slot, $data);
@@ -212,6 +241,12 @@ class RE_Access_Link_Slots {
         
         // Get slot template
         $slot_data = self::get_slot_data($slot);
+        $display_limit = self::sanitize_display_limit($slot_data['display_limit'] ?? self::DEFAULT_DISPLAY_LIMIT);
+        $order_mode = self::sanitize_order_mode($slot_data['order_mode'] ?? self::DEFAULT_ORDER_MODE);
+
+        if ($display_limit === 0 && $site_id === 0) {
+            return '';
+        }
         
         global $wpdb;
         $sites_table = $wpdb->prefix . 'reaccess_sites';
@@ -224,10 +259,7 @@ class RE_Access_Link_Slots {
             ));
             $sites = $site ? [$site] : [];
         } else {
-            $sites = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id DESC LIMIT 1",
-                $slot
-            ));
+            $sites = self::get_slot_sites($slot, $display_limit, $order_mode);
         }
         
         if (empty($sites)) {
@@ -258,5 +290,164 @@ class RE_Access_Link_Slots {
         }
         
         return apply_filters('re_access_link_slot_output', $output, $atts, $sites);
+    }
+
+    /**
+     * Get sites assigned to a slot.
+     *
+     * @param int $slot
+     * @param int $display_limit
+     * @param int $order_mode
+     * @return array<int,object>
+     */
+    private static function get_slot_sites($slot, $display_limit, $order_mode) {
+        global $wpdb;
+        $sites_table = $wpdb->prefix . 'reaccess_sites';
+
+        if ($display_limit <= 0) {
+            return [];
+        }
+
+        if ($order_mode === 1) {
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY site_name ASC LIMIT %d",
+                $slot,
+                $display_limit
+            ));
+        }
+
+        if ($order_mode === 2) {
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id DESC LIMIT %d",
+                $slot,
+                $display_limit
+            ));
+        }
+
+        if ($order_mode === 3) {
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots) ORDER BY id ASC LIMIT %d",
+                $slot,
+                $display_limit
+            ));
+        }
+
+        $candidates = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $sites_table WHERE status = 'approved' AND FIND_IN_SET(%d, link_slots)",
+            $slot
+        ));
+
+        if (empty($candidates)) {
+            return [];
+        }
+
+        if ($order_mode === 4) {
+            shuffle($candidates);
+            return array_slice($candidates, 0, $display_limit);
+        }
+
+        $site_ids = array_map(static function ($site) {
+            return (int) $site->id;
+        }, $candidates);
+        $priorities = self::get_return_priorities_for_sites($site_ids);
+        $tie_breakers = [];
+        foreach ($site_ids as $site_id) {
+            $tie_breakers[$site_id] = wp_rand(1, 1000000);
+        }
+
+        usort($candidates, static function ($left, $right) use ($priorities, $tie_breakers) {
+            $left_id = (int) $left->id;
+            $right_id = (int) $right->id;
+            $left_priority = $priorities[$left_id] ?? 0;
+            $right_priority = $priorities[$right_id] ?? 0;
+
+            if ($left_priority === $right_priority) {
+                return ($tie_breakers[$left_id] ?? 0) <=> ($tie_breakers[$right_id] ?? 0);
+            }
+
+            return $right_priority <=> $left_priority;
+        });
+
+        return array_slice($candidates, 0, $display_limit);
+    }
+
+    /**
+     * Get return priority values only for the provided candidate site IDs.
+     *
+     * @param array<int,int> $site_ids
+     * @return array<int,int>
+     */
+    private static function get_return_priorities_for_sites($site_ids) {
+        $site_ids = array_values(array_unique(array_filter(array_map('absint', $site_ids))));
+        if (empty($site_ids)) {
+            return [];
+        }
+
+        $period = 7;
+        if (class_exists('RE_Access_Ranking') && method_exists('RE_Access_Ranking', 'get_aggregation_period')) {
+            $period = (int) RE_Access_Ranking::get_aggregation_period();
+        }
+        $period = max(1, $period);
+
+        sort($site_ids);
+        $cache_key = 're_access_link_slot_return_' . $period . '_' . md5(implode(',', $site_ids));
+        $cached = get_transient($cache_key);
+        if ($cached !== false && is_array($cached)) {
+            return $cached;
+        }
+
+        global $wpdb;
+        $tracking_table = $wpdb->prefix . 'reaccess_site_daily';
+        $interval = $period - 1;
+        $placeholders = implode(',', array_fill(0, count($site_ids), '%d'));
+        $params = array_merge([$interval], $site_ids);
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT site_id, SUM(`in`) as total_in, SUM(`out`) as total_out
+             FROM $tracking_table
+             WHERE date >= DATE_SUB(CURDATE(), INTERVAL %d DAY)
+               AND site_id IN ($placeholders)
+             GROUP BY site_id",
+            ...$params
+        ));
+
+        $priorities = [];
+        foreach ($site_ids as $site_id) {
+            $priorities[$site_id] = 0;
+        }
+
+        if ($rows) {
+            foreach ($rows as $row) {
+                $site_id = (int) $row->site_id;
+                $total_in = (int) $row->total_in;
+                $total_out = (int) $row->total_out;
+                $priorities[$site_id] = max(0, $total_in - $total_out);
+            }
+        }
+
+        set_transient($cache_key, $priorities, 20 * MINUTE_IN_SECONDS);
+
+        return $priorities;
+    }
+
+    /**
+     * @param mixed $value
+     * @return int
+     */
+    private static function sanitize_display_limit($value) {
+        return max(0, min(20, absint($value)));
+    }
+
+    /**
+     * @param mixed $value
+     * @return int
+     */
+    private static function sanitize_order_mode($value) {
+        $order_mode = absint($value);
+        if ($order_mode < 1 || $order_mode > 5) {
+            return self::DEFAULT_ORDER_MODE;
+        }
+
+        return $order_mode;
     }
 }
